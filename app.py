@@ -70,11 +70,12 @@ def local_css():
     """, unsafe_allow_html=True)
 
 # --- API & DATABASE SETUP ---
-# Setup Gemini
+# Setup Gemini AI (Handles both Cloud Secrets and Local Key)
 if "GEMINI_API_KEY" in st.secrets:
     GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
 else:
-    GEMINI_API_KEY = "AIzaSyCxlh5XBvnPiSLvPwv4CaMJPyXE7jAfFpc" # Fallback for local testing
+    # REPLACE THIS IF RUNNING ON LAPTOP
+    GEMINI_API_KEY = "PASTE_YOUR_LOCAL_KEY_HERE" 
 
 try:
     client = genai.Client(api_key=GEMINI_API_KEY)
@@ -335,6 +336,7 @@ def page_shopping_list(hh_id):
 
 if __name__ == "__main__":
     main()
+
 
 
 
