@@ -214,7 +214,7 @@ def page_scanner(hh_id):
                     estimated_expiry (YYYY-MM-DD), suggested_store (Costco, Whole Foods, General),
                     storage_location (Fridge, Freezer, Pantry).
                     """
-                    response = client.models.generate_content(model="gemini-2.0-flash", contents=[prompt, image])
+                    response = client.models.generate_content(model="gemini-1.5-flash", contents=[prompt, image])
                     data = json.loads(response.text.replace("```json","").replace("```","").strip())
                     
                     st.success(f"Found {len(data)} items!")
@@ -336,6 +336,7 @@ def page_shopping_list(hh_id):
 
 if __name__ == "__main__":
     main()
+
 
 
 
