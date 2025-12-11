@@ -21,7 +21,7 @@ def local_css():
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
         }
 
-        /* 2. FORCE TEXT COLOR TO BLACK (Fixes the invisible text issue) */
+        /* 2. FORCE TEXT COLOR TO BLACK */
         h1, h2, h3, h4, h5, h6, p, label, .stMarkdown, div, span {
             color: #333333 !important;
         }
@@ -33,10 +33,10 @@ def local_css():
             color: #333333 !important;
             border-radius: 10px !important;
         }
-        input[type="text"], input[type="password"] {
+        input[type="text"], input[type="password"], input[type="number"] {
             color: #333333 !important;
-            -webkit-text-fill-color: #333333 !important; /* Safari/Chrome fix */
-            caret-color: #333333 !important; /* Cursor color */
+            -webkit-text-fill-color: #333333 !important;
+            caret-color: #333333 !important;
         }
         
         /* 4. BUTTONS - Instacart Green */
@@ -53,18 +53,19 @@ def local_css():
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
 
-        /* 5. TABS - Fix text visibility in tabs */
+        /* 5. TABS & EXPANDERS */
         button[data-baseweb="tab"] {
             color: #333333 !important;
         }
-        button[data-baseweb="tab"][aria-selected="true"] {
-            color: #43A047 !important;
-            border-bottom-color: #43A047 !important;
+        div[data-testid="stExpander"] {
+            background-color: #FAFAFA !important;
+            border-radius: 10px;
         }
-
-        /* 6. Fix Login Form Labels specifically */
-        .stTextInput > label {
-            color: #333333 !important;
+        
+        /* 6. Clean up top spacing */
+        .block-container {
+            padding-top: 2rem;
+            padding-bottom: 5rem;
         }
     </style>
     """, unsafe_allow_html=True)
@@ -192,10 +193,10 @@ def app_interface(user):
     elif menu == "🛒 Shopping List":
         page_shopping_list(hh_id)
 
-# --- PAGE: AI SCANNER (EDITABLE) ---
+# --- PAGE: AI SCANNER (UPDATED WITH UNIT DETECTION) ---
 def page_scanner(hh_id):
     st.title("📸 Smart Entry")
-    st.write("Upload a photo. Edit the AI suggestions (Thresholds/Qty) before saving.")
+    st.write("Upload a photo. Gemini will now detect Units (kg, liters, etc).")
     
     if 'scanned_data' not in st.session_state:
         st.session_state.scanned_data = None
@@ -207,17 +208,18 @@ def page_scanner(hh_id):
         st.image(image, width=300)
         
         if st.button("Analyze Image"):
-            with st.spinner("🤖 Analyzing & Suggesting Thresholds..."):
+            with st.spinner("🤖 Analyzing Items & Units..."):
                 try:
-                    # Using Flash Latest for stability
+                    # UPDATED PROMPT: Added 'unit'
                     prompt = """
                     Analyze this grocery image. Return a JSON list.
                     Fields: 
                     - item_name (string)
-                    - quantity (int)
+                    - quantity (float. e.g. 1.5)
+                    - unit (string. e.g. 'kg', 'lbs', 'gal', 'liters', 'box', 'count'. Default to 'count' if unsure.)
                     - category (Produce, Dairy, Pantry, etc)
                     - estimated_expiry (YYYY-MM-DD. Estimate based on item type)
-                    - threshold (int. Suggest minimum stock level. e.g. Milk=2, Spices=1)
+                    - threshold (float. Suggest minimum stock level.)
                     - suggested_store (Costco, Whole Foods, or General)
                     - storage_location (Fridge, Freezer, Pantry)
                     """
@@ -230,16 +232,19 @@ def page_scanner(hh_id):
     # EDITABLE TABLE SECTION
     if st.session_state.scanned_data:
         st.divider()
-        st.info("👇 Edit values below. Set your 'Min Limit' for auto-refill.")
+        st.info("👇 Edit values below before saving.")
         
         edited_df = st.data_editor(
             st.session_state.scanned_data,
             num_rows="dynamic",
             use_container_width=True,
             column_config={
+                "item_name": "Item Name",
+                "category": st.column_config.SelectboxColumn("Category", options=["Produce", "Dairy", "Meat", "Pantry", "Frozen", "Spices", "Beverages", "Household"]),
+                "quantity": st.column_config.NumberColumn("Qty", min_value=0.1, step=0.1),
+                "unit": st.column_config.SelectboxColumn("Unit", options=["count", "kg", "lbs", "g", "oz", "liters", "gal", "box", "pack"]),
                 "threshold": st.column_config.NumberColumn("Min Limit", min_value=0, step=1),
-                "estimated_expiry": st.column_config.DateColumn("Expiry"),
-                "quantity": st.column_config.NumberColumn("Qty", min_value=1, step=1)
+                "estimated_expiry": st.column_config.DateColumn("Expiry")
             }
         )
 
@@ -247,9 +252,9 @@ def page_scanner(hh_id):
             batch = db.batch()
             for item in edited_df:
                 ref = db.collection('inventory').document()
-                # Ensure numbers are int
-                item['quantity'] = int(item.get('quantity', 1))
-                item['threshold'] = int(item.get('threshold', 1))
+                # Ensure correct types
+                item['quantity'] = float(item.get('quantity', 1))
+                item['threshold'] = float(item.get('threshold', 1))
                 item['household_id'] = hh_id
                 item['added_at'] = firestore.SERVER_TIMESTAMP
                 batch.set(ref, item)
@@ -259,7 +264,7 @@ def page_scanner(hh_id):
             time.sleep(2)
             st.rerun()
 
-# --- PAGE: INVENTORY (SMART LOGIC) ---
+# --- PAGE: INVENTORY (UPDATED: EDIT EVERYTHING) ---
 def page_inventory(hh_id):
     c1, c2 = st.columns([3,1])
     c1.title("🥬 My Kitchen")
@@ -274,10 +279,10 @@ def page_inventory(hh_id):
         st.info("Kitchen is empty.")
         return
 
-    # Sort by Name
+    # Sort
     items.sort(key=lambda x: x.get('item_name', ''))
 
-    cols = st.columns(2) # Mobile friendly
+    cols = st.columns(2)
     today = datetime.date.today()
     
     for idx, item in enumerate(items):
@@ -286,21 +291,20 @@ def page_inventory(hh_id):
             current_qty = float(item.get('quantity', 1))
             user_threshold = float(item.get('threshold', 1))
             daily_usage = float(item.get('daily_usage', 0))
-
+            
             # 1. Spoilage Days
             try:
-                exp = datetime.datetime.strptime(item.get('estimated_expiry', ''), "%Y-%m-%d").date()
-                days_to_spoil = (exp - today).days
+                exp_date_obj = datetime.datetime.strptime(item.get('estimated_expiry', ''), "%Y-%m-%d").date()
+                days_to_spoil = (exp_date_obj - today).days
             except:
                 days_to_spoil = 999
+                exp_date_obj = today + datetime.timedelta(days=365) # Default for date picker
             
             # 2. Consumption Days
             days_to_empty = int(current_qty / daily_usage) if daily_usage > 0 else 999
             
-            # 3. Minimum Days Left
+            # 3. Minimum Days Left & Logic
             days_left = min(days_to_spoil, days_to_empty)
-            
-            # 4. Triggers
             is_low_stock = current_qty < user_threshold
             is_critical_time = days_left < 7
             
@@ -323,21 +327,33 @@ def page_inventory(hh_id):
             
             with st.container():
                 st.markdown(f"**{item['item_name']}**")
-                st.caption(f"{badge} • {item.get('storage_location','Pantry')}")
+                st.caption(f"{badge} • {item.get('category','General')}")
                 
-                # Input Grid
-                c_qty, c_use = st.columns(2)
-                new_qty = c_qty.number_input("Qty", 0.0, value=current_qty, key=f"q_{item['id']}")
-                new_usage = c_use.number_input("Daily Use", 0.0, step=0.1, value=daily_usage, key=f"u_{item['id']}")
-                
-                with st.expander("Settings"):
-                    new_thresh = st.number_input("Min Limit", 0.0, value=user_threshold, key=f"t_{item['id']}")
+                # MAIN STATS (Editable Qty & Unit)
+                c_qty, c_unit = st.columns([1, 1])
+                new_qty = c_qty.number_input("Qty", 0.0, step=0.5, value=current_qty, key=f"q_{item['id']}")
+                # Just display unit for now to save space, or make editable in expander
+                c_unit.write(f"**{item.get('unit', 'count')}**")
+
+                # EXPANDER: EDIT ALL DETAILS
+                with st.expander("Edit Details"):
+                    new_unit = st.text_input("Unit", value=item.get('unit', 'count'), key=f"un_{item['id']}")
+                    new_cat = st.selectbox("Category", ["Produce", "Dairy", "Meat", "Pantry", "Frozen", "Spices", "Beverages"], index=0, key=f"cat_{item['id']}")
+                    new_expiry = st.date_input("Expiry Date", value=exp_date_obj, key=f"ex_{item['id']}")
+                    new_thresh = st.number_input("Threshold", 0.0, value=user_threshold, key=f"t_{item['id']}")
+                    new_usage = st.number_input("Daily Use", 0.0, step=0.1, value=daily_usage, key=f"u_{item['id']}")
 
                 # Update DB on Change
-                if new_qty != current_qty or new_thresh != user_threshold or new_usage != daily_usage:
-                    db.collection('inventory').document(item['id']).update({
-                        "quantity": new_qty, "threshold": new_thresh, "daily_usage": new_usage
-                    })
+                # We check if anything changed inside the expander OR the main quantity box
+                updates = {}
+                if new_qty != current_qty: updates['quantity'] = new_qty
+                if new_unit != item.get('unit', 'count'): updates['unit'] = new_unit
+                if new_expiry != exp_date_obj: updates['estimated_expiry'] = str(new_expiry)
+                if new_thresh != user_threshold: updates['threshold'] = new_thresh
+                if new_usage != daily_usage: updates['daily_usage'] = new_usage
+                
+                if updates:
+                    db.collection('inventory').document(item['id']).update(updates)
                     st.rerun()
 
                 # Buttons
@@ -345,10 +361,7 @@ def page_inventory(hh_id):
                 if b1.button("➕ List", key=f"ad_{item['id']}"):
                     if item['item_name'].lower() not in shopping_list_names:
                         db.collection('shopping_list').add({
-                            "item_name": item['item_name'],
-                            "household_id": hh_id,
-                            "store": item.get('suggested_store', 'General'),
-                            "status": "Pending"
+                            "item_name": item['item_name'], "household_id": hh_id, "store": item.get('suggested_store', 'General'), "status": "Pending"
                         })
                         st.toast("Added!")
                 
@@ -357,7 +370,7 @@ def page_inventory(hh_id):
                     st.rerun()
             st.write("") 
 
-# --- PAGE: SHOPPING LIST (CLASSY) ---
+# --- PAGE: SHOPPING LIST ---
 def page_shopping_list(hh_id):
     st.title("🛒 Shopping List")
     
@@ -396,7 +409,6 @@ def page_shopping_list(hh_id):
 
 if __name__ == "__main__":
     main()
-
 
 
 
