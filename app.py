@@ -176,7 +176,6 @@ def login_signup_screen():
 def app_interface(user):
     hh_id = user['household_id']
     
-    # Sidebar
     with st.sidebar:
         st.title("🥗 Menu")
         st.caption(f"ID: {hh_id}")
@@ -186,7 +185,6 @@ def app_interface(user):
             st.session_state.user_info = None
             st.rerun()
 
-    # Routing
     if menu == "📸 AI Scanner":
         page_scanner(hh_id)
     elif menu == "📦 My Kitchen":
@@ -194,124 +192,188 @@ def app_interface(user):
     elif menu == "🛒 Shopping List":
         page_shopping_list(hh_id)
 
-# --- PAGE: AI SCANNER ---
+# --- PAGE: AI SCANNER (EDITABLE) ---
 def page_scanner(hh_id):
     st.title("📸 Smart Entry")
-    st.write("Upload receipts or photos of groceries.")
+    st.write("Upload a photo. Edit the AI suggestions (Thresholds/Qty) before saving.")
     
+    if 'scanned_data' not in st.session_state:
+        st.session_state.scanned_data = None
+
     img_file = st.file_uploader("", type=['jpg','png','jpeg'])
     
     if img_file:
         image = Image.open(img_file)
         st.image(image, width=300)
         
-        if st.button("Analyze & Add"):
-            with st.spinner("🤖 Analyzing freshness & brands..."):
+        if st.button("Analyze Image"):
+            with st.spinner("🤖 Analyzing & Suggesting Thresholds..."):
                 try:
+                    # Using Flash Latest for stability
                     prompt = """
                     Analyze this grocery image. Return a JSON list.
-                    Fields: item_name, quantity (int), category (Produce, Dairy, Pantry, etc),
-                    estimated_expiry (YYYY-MM-DD), suggested_store (Costco, Whole Foods, General),
-                    storage_location (Fridge, Freezer, Pantry).
+                    Fields: 
+                    - item_name (string)
+                    - quantity (int)
+                    - category (Produce, Dairy, Pantry, etc)
+                    - estimated_expiry (YYYY-MM-DD. Estimate based on item type)
+                    - threshold (int. Suggest minimum stock level. e.g. Milk=2, Spices=1)
+                    - suggested_store (Costco, Whole Foods, or General)
+                    - storage_location (Fridge, Freezer, Pantry)
                     """
                     response = client.models.generate_content(model="gemini-flash-latest", contents=[prompt, image])
-                    data = json.loads(response.text.replace("```json","").replace("```","").strip())
-                    
-                    st.success(f"Found {len(data)} items!")
-                    st.json(data)
-                    
-                    # Auto-Save
-                    batch = db.batch()
-                    for item in data:
-                        ref = db.collection('inventory').document()
-                        item['household_id'] = hh_id
-                        item['added_at'] = firestore.SERVER_TIMESTAMP
-                        batch.set(ref, item)
-                    batch.commit()
-                    st.toast("Saved to Kitchen!")
-                    time.sleep(2)
-                    
+                    clean_json = response.text.replace("```json","").replace("```","").strip()
+                    st.session_state.scanned_data = json.loads(clean_json)
                 except Exception as e:
                     st.error(f"Error: {e}")
 
-# --- PAGE: INVENTORY (GRID LAYOUT) ---
+    # EDITABLE TABLE SECTION
+    if st.session_state.scanned_data:
+        st.divider()
+        st.info("👇 Edit values below. Set your 'Min Limit' for auto-refill.")
+        
+        edited_df = st.data_editor(
+            st.session_state.scanned_data,
+            num_rows="dynamic",
+            use_container_width=True,
+            column_config={
+                "threshold": st.column_config.NumberColumn("Min Limit", min_value=0, step=1),
+                "estimated_expiry": st.column_config.DateColumn("Expiry"),
+                "quantity": st.column_config.NumberColumn("Qty", min_value=1, step=1)
+            }
+        )
+
+        if st.button("Confirm & Save", type="primary"):
+            batch = db.batch()
+            for item in edited_df:
+                ref = db.collection('inventory').document()
+                # Ensure numbers are int
+                item['quantity'] = int(item.get('quantity', 1))
+                item['threshold'] = int(item.get('threshold', 1))
+                item['household_id'] = hh_id
+                item['added_at'] = firestore.SERVER_TIMESTAMP
+                batch.set(ref, item)
+            batch.commit()
+            st.success("✅ Saved to Kitchen!")
+            st.session_state.scanned_data = None
+            time.sleep(2)
+            st.rerun()
+
+# --- PAGE: INVENTORY (SMART LOGIC) ---
 def page_inventory(hh_id):
     c1, c2 = st.columns([3,1])
     c1.title("🥬 My Kitchen")
     
-    # Fetch
     docs = db.collection('inventory').where('household_id', '==', hh_id).stream()
     items = [{'id': d.id, **d.to_dict()} for d in docs]
     
+    shop_docs = db.collection('shopping_list').where('household_id', '==', hh_id).where('status', '==', 'Pending').stream()
+    shopping_list_names = {d.to_dict()['item_name'].lower() for d in shop_docs}
+
     if not items:
         st.info("Kitchen is empty.")
         return
 
-    # Sort by Expiry
-    items.sort(key=lambda x: x.get('estimated_expiry', '2099-12-31'))
+    # Sort by Name
+    items.sort(key=lambda x: x.get('item_name', ''))
 
-    # GRID DISPLAY (3 Columns)
-    cols = st.columns(3)
+    cols = st.columns(2) # Mobile friendly
     today = datetime.date.today()
     
     for idx, item in enumerate(items):
-        with cols[idx % 3]: # Cycle through columns 0, 1, 2
-            # Calculate Expiry
+        with cols[idx % 2]:
+            # --- LOGIC ENGINE ---
+            current_qty = float(item.get('quantity', 1))
+            user_threshold = float(item.get('threshold', 1))
+            daily_usage = float(item.get('daily_usage', 0))
+
+            # 1. Spoilage Days
             try:
                 exp = datetime.datetime.strptime(item.get('estimated_expiry', ''), "%Y-%m-%d").date()
-                days = (exp - today).days
+                days_to_spoil = (exp - today).days
             except:
-                days = 999
+                days_to_spoil = 999
             
-            # Badge Logic
-            if days < 0: badge = "🔴 Expired"
-            elif days <= 3: badge = "🟠 Use Soon"
-            else: badge = f"🟢 {days} days"
+            # 2. Consumption Days
+            days_to_empty = int(current_qty / daily_usage) if daily_usage > 0 else 999
             
-            # CARD UI
+            # 3. Minimum Days Left
+            days_left = min(days_to_spoil, days_to_empty)
+            
+            # 4. Triggers
+            is_low_stock = current_qty < user_threshold
+            is_critical_time = days_left < 7
+            
+            # AUTO-ADD
+            if (is_low_stock or is_critical_time) and item['item_name'].lower() not in shopping_list_names:
+                db.collection('shopping_list').add({
+                    "item_name": item['item_name'],
+                    "household_id": hh_id,
+                    "store": item.get('suggested_store', 'General'),
+                    "status": "Pending",
+                    "reason": "Auto-Refill"
+                })
+                shopping_list_names.add(item['item_name'].lower())
+                st.toast(f"🚨 Added {item['item_name']} to list!")
+
+            # --- UI CARD ---
+            if days_left < 0: badge = "🔴 Expired"
+            elif days_left < 7: badge = f"🟠 {days_left}d Left"
+            else: badge = f"🟢 {days_left} days"
+            
             with st.container():
                 st.markdown(f"**{item['item_name']}**")
                 st.caption(f"{badge} • {item.get('storage_location','Pantry')}")
-                st.write(f"Qty: {item.get('quantity', 1)}")
                 
-                # Buttons row
-                b1, b2 = st.columns(2)
-                if b1.button("➕ List", key=f"add_{item['id']}"):
-                    db.collection('shopping_list').add({
-                        "item_name": item['item_name'],
-                        "household_id": hh_id,
-                        "store": item.get('suggested_store', 'General'),
-                        "status": "Pending"
+                # Input Grid
+                c_qty, c_use = st.columns(2)
+                new_qty = c_qty.number_input("Qty", 0.0, value=current_qty, key=f"q_{item['id']}")
+                new_usage = c_use.number_input("Daily Use", 0.0, step=0.1, value=daily_usage, key=f"u_{item['id']}")
+                
+                with st.expander("Settings"):
+                    new_thresh = st.number_input("Min Limit", 0.0, value=user_threshold, key=f"t_{item['id']}")
+
+                # Update DB on Change
+                if new_qty != current_qty or new_thresh != user_threshold or new_usage != daily_usage:
+                    db.collection('inventory').document(item['id']).update({
+                        "quantity": new_qty, "threshold": new_thresh, "daily_usage": new_usage
                     })
-                    st.toast("Added to list")
+                    st.rerun()
+
+                # Buttons
+                b1, b2 = st.columns(2)
+                if b1.button("➕ List", key=f"ad_{item['id']}"):
+                    if item['item_name'].lower() not in shopping_list_names:
+                        db.collection('shopping_list').add({
+                            "item_name": item['item_name'],
+                            "household_id": hh_id,
+                            "store": item.get('suggested_store', 'General'),
+                            "status": "Pending"
+                        })
+                        st.toast("Added!")
                 
-                if b2.button("🗑️", key=f"del_{item['id']}"):
+                if b2.button("🗑️", key=f"dl_{item['id']}"):
                     db.collection('inventory').document(item['id']).delete()
                     st.rerun()
-            st.write("") # Spacer
+            st.write("") 
 
-# --- PAGE: SHOPPING LIST ---
+# --- PAGE: SHOPPING LIST (CLASSY) ---
 def page_shopping_list(hh_id):
     st.title("🛒 Shopping List")
     
-    # Quick Add Bar
     with st.form("quick_add", clear_on_submit=True):
         c1, c2, c3 = st.columns([3, 2, 1])
-        new_item = c1.text_input("Item", placeholder="Milk, Eggs...", label_visibility="collapsed")
+        new_item = c1.text_input("Item", placeholder="Avocados...", label_visibility="collapsed")
         store = c2.selectbox("Store", ["General", "Costco", "Whole Foods", "Trader Joe's"], label_visibility="collapsed")
         if c3.form_submit_button("Add"):
             if new_item:
                 db.collection('shopping_list').add({
-                    "item_name": new_item,
-                    "household_id": hh_id, 
-                    "store": store, 
-                    "status": "Pending"
+                    "item_name": new_item, "household_id": hh_id, "store": store, "status": "Pending"
                 })
                 st.rerun()
     
     st.divider()
 
-    # List Display
     docs = db.collection('shopping_list').where('household_id', '==', hh_id).where('status', '==', 'Pending').stream()
     data = [{'id': d.id, **d.to_dict()} for d in docs]
     
@@ -319,13 +381,11 @@ def page_shopping_list(hh_id):
         st.success("All caught up! 🎉")
         return
 
-    # Group by Store
     stores = list(set([d.get('store', 'General') for d in data]))
     
     for store in stores:
         st.markdown(f"#### 📍 {store}")
         store_items = [d for d in data if d.get('store') == store]
-        
         for item in store_items:
             c1, c2 = st.columns([5, 1])
             c1.markdown(f"**{item['item_name']}**")
