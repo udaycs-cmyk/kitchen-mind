@@ -15,52 +15,56 @@ st.set_page_config(page_title="KitchenMind Pro", page_icon="🥗", layout="wide"
 def local_css():
     st.markdown("""
     <style>
-        /* 1. Main Background & Font */
+        /* 1. Main Background - Force White */
         .stApp {
             background-color: #FFFFFF;
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
         }
-        
-        /* 2. Remove default top padding for a cleaner look */
-        .block-container {
-            padding-top: 2rem;
-            padding-bottom: 5rem;
+
+        /* 2. FORCE TEXT COLOR TO BLACK (Fixes the invisible text issue) */
+        h1, h2, h3, h4, h5, h6, p, label, .stMarkdown, div, span {
+            color: #333333 !important;
         }
         
-        /* 3. Instacart-style Green Buttons */
-        .stButton > button {
-            background-color: #43A047; /* Instacart Green */
-            color: white;
-            border-radius: 20px;
-            border: none;
-            padding: 10px 24px;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            width: 100%;
+        /* 3. INPUT FIELDS - Force White Background & Dark Text */
+        div[data-baseweb="input"] {
+            background-color: #FFFFFF !important;
+            border: 1px solid #E0E0E0 !important;
+            color: #333333 !important;
+            border-radius: 10px !important;
         }
-        .stButton > button:hover {
-            background-color: #2E7D32;
+        input[type="text"], input[type="password"] {
+            color: #333333 !important;
+            -webkit-text-fill-color: #333333 !important; /* Safari/Chrome fix */
+            caret-color: #333333 !important; /* Cursor color */
+        }
+        
+        /* 4. BUTTONS - Instacart Green */
+        div.stButton > button {
+            background-color: #43A047 !important;
+            color: white !important;
+            border-radius: 20px !important;
+            border: none !important;
+            padding: 10px 24px !important;
+            font-weight: 600 !important;
+        }
+        div.stButton > button:hover {
+            background-color: #2E7D32 !important;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
 
-        /* 4. Card Styling for Inventory Items (Grid) */
-        div[data-testid="stVerticalBlock"] > div[data-testid="stVerticalBlock"] {
-            background-color: #FAFAFA;
-            border-radius: 12px;
-            padding: 15px;
-            /* box-shadow: 0 2px 5px rgba(0,0,0,0.05);  Optional shadow */
+        /* 5. TABS - Fix text visibility in tabs */
+        button[data-baseweb="tab"] {
+            color: #333333 !important;
         }
-        
-        /* 5. Headers */
-        h1, h2, h3 {
-            color: #333333;
-            font-weight: 700;
+        button[data-baseweb="tab"][aria-selected="true"] {
+            color: #43A047 !important;
+            border-bottom-color: #43A047 !important;
         }
-        
-        /* 6. Inputs (Text fields) */
-        .stTextInput > div > div > input {
-            border-radius: 10px;
-            border: 1px solid #E0E0E0;
+
+        /* 6. Fix Login Form Labels specifically */
+        .stTextInput > label {
+            color: #333333 !important;
         }
     </style>
     """, unsafe_allow_html=True)
@@ -331,3 +335,4 @@ def page_shopping_list(hh_id):
 
 if __name__ == "__main__":
     main()
+
