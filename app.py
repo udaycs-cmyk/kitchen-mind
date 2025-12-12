@@ -275,7 +275,7 @@ def page_home_dashboard(hh_id):
 # --- 5. KITCHEN MIND PRO ---
 def page_kitchen_mind_pro(hh_id):
     st.button("← Back Home", on_click=lambda: st.session_state.update(current_page='home'))
-    st.markdown("<h2>📸 KitchenMind Pro <span class='new-badge'>NEW</span></h2>", unsafe_allow_html=True)
+    st.markdown("<h2>📸 Kitchen Mind Pro <span class='new-badge'>NEW</span></h2>", unsafe_allow_html=True)
     st.write("Upload a photo to auto-detect items, barcodes, and weights.")
     
     with st.container(): 
@@ -538,5 +538,6 @@ def page_shopping_list(hh_id):
 
 if __name__ == "__main__":
     main()
+
 
 
