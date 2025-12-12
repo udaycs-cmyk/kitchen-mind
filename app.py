@@ -264,10 +264,17 @@ def page_manual_add(hh_id):
         
         st.markdown("#### Quantity & Weight")
         r1_c1, r1_c2, r1_c3 = st.columns(3)
-        qty = r1_c1.number_input("Count", 1.0, step=1.0)
-        weight = r1_c2.number_input("Weight", 0.0, step=0.5)
-        w_unit = r1_c3.selectbox("Unit", ["count", "oz", "lbs", "g", "kg", "ml", "L", "gal"])
+        # Default Current Qty
+        qty = r1_c1.number_input("Current Count (e.g. 0.5)", min_value=0.1, step=0.5, value=1.0)
+        # NEW: Initial Qty (Defaults to matching Current Qty via logic below if left untouched, but user can edit)
+        init_qty = r1_c2.number_input("Initial Count (Size)", min_value=0.1, step=0.5, value=1.0, help="The size when full (e.g. 1.0)")
         
+        weight = r1_c3.number_input("Weight", 0.0, step=0.5)
+        
+        r1_c4 = st.columns(1)[0]
+        w_unit = r1_c4.selectbox("Unit", ["count", "oz", "lbs", "g", "kg", "ml", "L", "gal"])
+        
+        st.divider()
         r2_c1, r2_c2, r2_c3 = st.columns(3)
         threshold = r2_c1.number_input("Min Limit (Threshold)", 1.0)
         expiry = r2_c2.date_input("Expiry", datetime.date.today() + datetime.timedelta(days=7))
@@ -278,11 +285,16 @@ def page_manual_add(hh_id):
 
         if st.form_submit_button("Save Item", type="primary"):
             if name:
+                # Logic: If user leaves Initial as 1.0 but sets Current to 5.0, we assume Initial should match Current
+                # unless they specifically changed Initial to be higher. 
+                # Simplest way: Just save what they typed.
+                
                 db.collection('inventory').add({
                     "item_name": name, "category": category,
-                    "quantity": qty, "initial_quantity": qty,
-                    "weight": weight, "weight_unit": w_unit,
-                    "threshold": threshold, "estimated_expiry": str(expiry),
+                    "quantity": float(qty), 
+                    "initial_quantity": float(init_qty), # <--- SAVES YOUR MANUAL INPUT
+                    "weight": float(weight), "weight_unit": w_unit,
+                    "threshold": float(threshold), "estimated_expiry": str(expiry),
                     "suggested_store": store, "notes": notes, "barcode": barcode,
                     "household_id": hh_id,
                     "added_at": firestore.SERVER_TIMESTAMP,
@@ -430,3 +442,4 @@ def page_shopping_list(hh_id):
 
 if __name__ == "__main__":
     main()
+
