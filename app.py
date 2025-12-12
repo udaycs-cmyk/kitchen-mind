@@ -12,7 +12,7 @@ import re
 import math
 
 # --- 1. CONFIGURATION & SETUP ---
-st.set_page_config(page_title="KitchenMind Pro", page_icon="🥗", layout="wide")
+st.set_page_config(page_title="RE:STOCK Pro", page_icon="https://cdn-icons-png.flaticon.com/512/2921/2921822.png", layout="centered")
 
 # --- CUSTOM CSS (BLACK & GOLD + APPLE TYPOGRAPHY) ---
 def local_css():
@@ -538,3 +538,4 @@ def page_shopping_list(hh_id):
 
 if __name__ == "__main__":
     main()
+
