@@ -19,101 +19,106 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- CUSTOM CSS (MOBILE LUXURY THEME) ---
+# --- CUSTOM CSS (ADAPTIVE DAY/NIGHT LUXURY THEME) ---
 def local_css():
     st.markdown("""
     <style>
-        /* 1. APP BACKGROUND */
-        .stApp {
-            background-color: #0E0E0E;
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
-        }
-
-        /* 2. MOBILE-FIRST TYPOGRAPHY */
-        h1, h2, h3 { 
+        /* 1. TYPOGRAPHY - Gold Headers (Visible in both modes) */
+        h1, h2, h3, h4, h5, h6 { 
             color: #D4AF37 !important; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             font-weight: 700; 
             letter-spacing: -0.5px;
         }
-        p, label, div, span { 
-            color: #F5F5F7 !important; 
-            font-size: 16px; 
-        }
-
-        /* 3. THUMB-FRIENDLY INPUTS */
+        
+        /* 2. ADAPTIVE INPUT FIELDS (The Fix) */
+        /* We make the background transparent so it works on White OR Black pages */
         div[data-baseweb="input"] {
-            background-color: #1C1C1E !important;
-            border: 1px solid #333333 !important;
-            border-radius: 16px !important; 
-            height: 50px; 
-            align-items: center;
-        }
-        input {
-            color: #FFFFFF !important;
-            font-size: 18px !important; 
-            padding-left: 10px;
+            background-color: transparent !important;
+            border: 2px solid #D4AF37 !important; /* Gold Border */
+            border-radius: 12px !important;
         }
         
-        /* 4. BIG "TAP" BUTTONS */
-        div.stButton > button {
-            background-image: linear-gradient(180deg, #D4AF37 0%, #B4941F 100%);
-            color: #000000 !important;
-            border-radius: 25px !important;
-            border: none !important;
-            height: 55px !important; 
+        /* Force text to adapt to the system theme (Black in Light Mode, White in Dark Mode) */
+        input, textarea {
+            background-color: transparent !important;
+            color: inherit !important; 
             font-size: 18px !important;
-            font-weight: 700 !important;
-            width: 100%;
-            margin-top: 10px;
-            box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3);
+            font-weight: 500;
         }
-        div.stButton > button:active {
-            transform: scale(0.98); 
+        
+        /* Fix for the placeholder text visibility */
+        ::placeholder {
+            color: #888888 !important;
+            opacity: 1;
         }
 
-        /* 5. CARDS (Mobile Friendly) */
+        /* Dropdowns - Selectbox */
+        div[data-baseweb="select"] > div {
+             background-color: transparent !important;
+             border: 2px solid #D4AF37 !important;
+             color: inherit !important;
+        }
+        
+        /* 3. BUTTONS - Solid Gold (High Contrast on both backgrounds) */
+        div.stButton > button {
+            background-image: linear-gradient(180deg, #D4AF37 0%, #B4941F 100%);
+            color: #000000 !important; /* Always Black text on Gold button */
+            border-radius: 30px !important;
+            border: none !important;
+            height: 55px !important;
+            font-size: 18px !important;
+            font-weight: 700 !important;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            transition: transform 0.2s;
+        }
+        div.stButton > button:active {
+            transform: scale(0.98);
+        }
+
+        /* 4. CARDS - Adaptive Border Style */
         div[data-testid="stForm"], div[data-testid="stExpander"], .stContainer {
-            background-color: #151515 !important;
-            border: 1px solid #222;
-            border-left: 4px solid #D4AF37;
-            border-radius: 20px;
+            background-color: transparent !important; /* Let theme color show through */
+            border: 1px solid #DDDDDD; /* Light grey border */
+            border-left: 5px solid #D4AF37; /* Gold accent */
+            border-radius: 16px;
             padding: 20px;
             margin-bottom: 15px;
         }
-
-        /* 6. MEDIA QUERIES */
-        @media (max-width: 640px) {
-            .block-container {
-                padding-top: 2rem !important;
-                padding-left: 1rem !important;
-                padding-right: 1rem !important;
-            }
-            h1 { font-size: 28px !important; }
-            h2 { font-size: 24px !important; }
-            header { visibility: hidden; } 
-        }
-
-        /* 7. BADGE */
-        .new-badge {
-            background-color: #D4AF37;
-            color: #000;
-            padding: 4px 8px;
-            border-radius: 8px;
-            font-size: 0.7em;
-            font-weight: 800;
-            margin-left: 5px;
-        }
         
-        /* 8. TABS STYLE */
+        /* Dark Mode Specific Overrides (If system is dark, lighten the card borders) */
+        @media (prefers-color-scheme: dark) {
+            div[data-testid="stForm"], div[data-testid="stExpander"], .stContainer {
+                border: 1px solid #333333;
+                border-left: 5px solid #D4AF37;
+            }
+        }
+
+        /* 5. TABS */
         button[data-baseweb="tab"] {
             background-color: transparent !important;
-            color: #888888 !important;
             font-size: 16px;
-            padding: 10px 20px;
+            font-weight: 600;
         }
         button[data-baseweb="tab"][aria-selected="true"] {
              color: #D4AF37 !important;
              border-bottom: 3px solid #D4AF37 !important;
+        }
+
+        /* 6. MOBILE PADDING */
+        .block-container {
+            padding-top: 1rem;
+            padding-bottom: 5rem;
+        }
+        
+        /* 7. BADGES */
+        .new-badge {
+            background-color: #D4AF37;
+            color: black;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.6em;
+            vertical-align: middle;
         }
     </style>
     """, unsafe_allow_html=True)
@@ -280,44 +285,29 @@ def page_home_dashboard(hh_id):
             st.session_state.current_page = 'shopping_list'
             st.rerun()
 
-# --- 5. KITCHEN MIND PRO (UPDATED WITH SEPARATE CAMERA/UPLOAD) ---
+# --- 5. KITCHEN MIND PRO ---
 def page_kitchen_mind_pro(hh_id):
     st.button("← Back", on_click=lambda: st.session_state.update(current_page='home'))
     st.markdown("## 📸 AI Scanner")
     st.info("Choose Camera to snap a photo, or Upload for existing files.")
     
     with st.container(): 
-        # --- NEW: SPLIT TABS FOR CAMERA VS UPLOAD ---
         tab_cam, tab_file = st.tabs(["📸 Take Photo", "📂 Upload File"])
-        
         img_buffer = None
         
         with tab_cam:
-            # st.camera_input creates a widget that opens the webcam/phone camera directly
             cam_pic = st.camera_input("Snap Picture")
-            if cam_pic:
-                img_buffer = cam_pic
+            if cam_pic: img_buffer = cam_pic
                 
         with tab_file:
             up_pic = st.file_uploader("Choose from Device", type=['jpg','png','jpeg'])
-            if up_pic:
-                img_buffer = up_pic
+            if up_pic: img_buffer = up_pic
 
-        # Reset state if new image is loaded
-        if 'last_analyzed_image' not in st.session_state:
-            st.session_state.last_analyzed_image = None
-            
         if 'scanned_data' not in st.session_state:
             st.session_state.scanned_data = None
 
         if img_buffer:
-            # If we have a new image buffer that is different from the last one we processed
-            # (Streamlit re-runs scripts, so we check if button pressed to process)
-            
-            # Display the selected image (from either source)
             image = Image.open(img_buffer)
-            # st.image(image, use_container_width=True) # Camera input already shows preview, preventing double show
-            
             if st.button("Analyze This Image", type="primary"):
                 with st.spinner("🤖 Processing..."):
                     try:
@@ -345,10 +335,8 @@ def page_kitchen_mind_pro(hh_id):
                     except Exception as e:
                         st.error(f"Error: {e}")
 
-        # Show Data Editor if data exists
         if st.session_state.scanned_data:
             st.divider()
-            st.markdown("#### Review AI Results")
             edited_df = st.data_editor(
                 st.session_state.scanned_data,
                 num_rows="dynamic",
