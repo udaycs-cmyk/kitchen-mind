@@ -193,7 +193,7 @@ def sidebar_nav():
 def login_signup_screen():
     c1, c2, c3 = st.columns([1,2,1])
     with c2:
-        st.markdown("<h1 style='text-align: center; color: #D4AF37; margin-bottom: 0;'>RE:STOCK PRO</h1>", unsafe_allow_html=True)
+        st.markdown("<h1 style='text-align: center; color: #D4AF37; margin-bottom: 0;'>RE:STOCK Pro</h1>", unsafe_allow_html=True)
         st.markdown("<p style='text-align: center; color: #888; font-size: 0.9em; margin-top: 0;'>YOUR SMART INVENTORY MANAGER</p>", unsafe_allow_html=True)
         st.write("")
         
@@ -538,6 +538,7 @@ def page_shopping_list(hh_id):
 
 if __name__ == "__main__":
     main()
+
 
 
 
