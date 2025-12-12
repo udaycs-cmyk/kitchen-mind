@@ -13,9 +13,9 @@ import math
 
 # --- 1. CONFIGURATION & SETUP ---
 st.set_page_config(
-    page_title="Kitchen Mind Pro",
+    page_title="RE:STOCK Pro",
     page_icon="https://cdn-icons-png.flaticon.com/512/2921/2921822.png",
-    layout="wide",
+    layout="wide", # Wide layout looks better for "Dashboard" cards
     initial_sidebar_state="expanded"
 )
 
@@ -30,7 +30,7 @@ def local_css():
         }
         
         [data-testid="stSidebar"] {
-            background-color: #050505;
+            background-color: #050505; /* Darker than main */
             border-right: 1px solid #333;
         }
 
@@ -43,7 +43,7 @@ def local_css():
         }
         p, label, span, div { color: #E0E0E0 !important; font-size: 15px; }
         
-        /* Metric Labels */
+        /* Metric Labels (Small text above numbers) */
         [data-testid="stMetricLabel"] {
             color: #888888 !important;
             font-size: 14px !important;
@@ -87,29 +87,26 @@ def local_css():
             margin-bottom: 15px;
             transition: border 0.3s ease;
         }
-        
+        .item-card:hover {
+            border: 1px solid #D4AF37;
+        }
+
         /* 6. PROGRESS BAR - Gold */
         .stProgress > div > div > div > div {
             background-color: #D4AF37;
         }
 
-        /* 7. NEW BADGE & TITLE */
-        .new-badge {
-            background-color: #D4AF37;
-            color: #000;
-            padding: 4px 8px;
-            border-radius: 6px;
-            font-size: 0.5em;
+        /* 7. LOGIN TITLE VISIBILITY FIX */
+        .login-title {
+            font-size: 3rem;
             font-weight: 800;
-            vertical-align: super;
-            margin-left: 5px;
+            background: -webkit-linear-gradient(#FFD700, #B8860B);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+            margin-bottom: 10px;
         }
         
-        /* Dashboard Grid Cards (Home Menu) */
-        div[data-testid="stVerticalBlock"] > div[data-testid="stVerticalBlock"] {
-            border-radius: 15px;
-        }
-
         /* Hide default header/footer */
         header {visibility: hidden;}
         footer {visibility: hidden;}
@@ -190,7 +187,7 @@ def main():
 
 def sidebar_nav():
     with st.sidebar:
-        st.markdown("## Kitchen Mind Pro <span class='new-badge'>NEW ✨</span>", unsafe_allow_html=True)
+        st.markdown("## RE:STOCK")
         st.caption("Premium Inventory")
         if st.button("🏠 Dashboard"):
             st.session_state.current_page = 'home'
@@ -212,8 +209,9 @@ def sidebar_nav():
 def login_signup_screen():
     c1, c2, c3 = st.columns([1,2,1])
     with c2:
-        st.markdown("<h1 style='text-align: center; color: #D4AF37;'>KITCHEN MIND PRO</h1>", unsafe_allow_html=True)
-        st.markdown("<p style='text-align: center; color: #888;'>SMART HOME INVENTORY</p>", unsafe_allow_html=True)
+        # Use custom HTML for the title to ensure visibility
+        st.markdown('<div class="login-title">KITCHENMIND</div>', unsafe_allow_html=True)
+        st.markdown("<p style='text-align: center; color: #888; font-size: 0.9em; margin-top: -10px;'>SMART HOME INVENTORY</p>", unsafe_allow_html=True)
         st.write("")
         
         tab1, tab2 = st.tabs(["LOGIN", "REGISTER"])
@@ -255,58 +253,48 @@ def login_signup_screen():
                         else:
                             st.error("Invalid ID")
 
-# --- 4. HOME DASHBOARD (MOBILE MENU GRID) ---
+# --- 4. HOME DASHBOARD ---
 def page_home_dashboard(hh_id):
     st.markdown("<h2>👋 Dashboard</h2>", unsafe_allow_html=True)
     
-    # 2x2 Grid for Mobile App feel
     c1, c2, c3, c4 = st.columns(4)
-    
     with c1:
         with st.container(border=True):
-            st.markdown("#### 📸 Kitchen Mind Pro <span class='new-badge'>NEW</span>", unsafe_allow_html=True)
-            st.caption("AI Scan")
-            if st.button("Launch Scanner"): 
-                st.session_state.current_page = 'kitchen_mind_pro'
-                st.rerun()
+            st.markdown("#### 📸 Scan")
+            st.caption("AI Entry")
+            if st.button("Launch"): st.session_state.current_page = 'kitchen_mind_pro'; st.rerun()
     with c2:
         with st.container(border=True):
-            st.markdown("#### 📝 Manual Add")
-            st.caption("Type Entry")
-            if st.button("Add Item"): 
-                st.session_state.current_page = 'manual_add'
-                st.rerun()
+            st.markdown("#### 📝 Add")
+            st.caption("Manual")
+            if st.button("Type"): st.session_state.current_page = 'manual_add'; st.rerun()
     with c3:
         with st.container(border=True):
             st.markdown("#### 📦 Stock")
-            st.caption("View Inventory")
-            if st.button("View All"): 
-                st.session_state.current_page = 'inventory'
-                st.rerun()
+            st.caption("View All")
+            if st.button("View"): st.session_state.current_page = 'inventory'; st.rerun()
     with c4:
         with st.container(border=True):
             st.markdown("#### 🛒 Cart")
-            st.caption("Shopping List")
-            if st.button("Shop Now"): 
-                st.session_state.current_page = 'shopping_list'
-                st.rerun()
+            st.caption("To Buy")
+            if st.button("Shop"): st.session_state.current_page = 'shopping_list'; st.rerun()
 
-# --- 5. KITCHEN MIND PRO (AI SCANNER) ---
+# --- 5. KITCHEN MIND PRO ---
 def page_kitchen_mind_pro(hh_id):
     st.button("← Back", on_click=lambda: st.session_state.update(current_page='home'))
-    st.markdown("## 📸 Kitchen Mind Pro <span class='new-badge'>NEW ✨</span>", unsafe_allow_html=True)
-    st.info("Snap a photo. AI detects items, barcodes, and weights.")
+    st.markdown("## 📸 AI Scanner")
+    st.info("Choose Camera to snap a photo, or Upload for existing files.")
     
     with st.container(): 
-        tab_cam, tab_file = st.tabs(["📸 Camera", "📂 Upload"])
+        tab_cam, tab_file = st.tabs(["📸 Take Photo", "📂 Upload File"])
         img_buffer = None
         
         with tab_cam:
-            cam_pic = st.camera_input("Take Picture")
+            cam_pic = st.camera_input("Snap Picture")
             if cam_pic: img_buffer = cam_pic
                 
         with tab_file:
-            up_pic = st.file_uploader("Browse", type=['jpg','png','jpeg'])
+            up_pic = st.file_uploader("Choose from Device", type=['jpg','png','jpeg'])
             if up_pic: img_buffer = up_pic
 
         if 'scanned_data' not in st.session_state: st.session_state.scanned_data = None
