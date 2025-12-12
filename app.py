@@ -210,8 +210,8 @@ def login_signup_screen():
     c1, c2, c3 = st.columns([1,2,1])
     with c2:
         # Use custom HTML for the title to ensure visibility
-        st.markdown('<div class="login-title">KITCHENMIND</div>', unsafe_allow_html=True)
-        st.markdown("<p style='text-align: center; color: #888; font-size: 0.9em; margin-top: -10px;'>SMART HOME INVENTORY</p>", unsafe_allow_html=True)
+        st.markdown('<div class="login-title">RE:STOCK PRO</div>', unsafe_allow_html=True)
+        st.markdown("<p style='text-align: center; color: #888; font-size: 0.9em; margin-top: -10px;'>Your Smart Inventory Manager</p>", unsafe_allow_html=True)
         st.write("")
         
         tab1, tab2 = st.tabs(["LOGIN", "REGISTER"])
@@ -511,3 +511,4 @@ def page_shopping_list(hh_id):
 
 if __name__ == "__main__":
     main()
+
