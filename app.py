@@ -15,78 +15,82 @@ import math
 st.set_page_config(
     page_title="RE:STOCK Pro",
     page_icon="https://cdn-icons-png.flaticon.com/512/2921/2921822.png",
-    layout="wide"
+    layout="centered" # Keeps the luxury card feel focused
 )
 
-# --- CUSTOM CSS (BLACK & GOLD + APPLE TYPOGRAPHY) ---
+# --- CUSTOM CSS (PREMIUM DARK MODE) ---
 def local_css():
     st.markdown("""
     <style>
         /* 1. BACKGROUND - Deep Matte Black */
         .stApp {
             background-color: #0E0E0E;
-            /* APPLE.COM FONT STACK: Uses SF Pro on Mac/iOS and Segoe UI on Windows */
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
 
-        /* 2. TYPOGRAPHY */
+        /* 2. TYPOGRAPHY - Gold & Silver */
         h1, h2, h3 { 
             color: #D4AF37 !important; 
-            font-weight: 600; /* Apple prefers Semi-Bold (600) over Bold (700) for headers */
-            letter-spacing: -0.5px; /* Tighter tracking like Apple */
+            font-weight: 600; 
+            letter-spacing: -0.5px;
         }
         h4, h5, h6 { color: #C5A028 !important; font-weight: 500; }
-        p, label, span, div, li { color: #F5F5F7 !important; /* Apple's off-white */ font-weight: 400; }
+        p, label, span, div, li { color: #F5F5F7 !important; font-weight: 400; }
         
-        /* 3. INPUT FIELDS - High Contrast */
+        /* 3. INPUT FIELDS - Sleek Dark Mode (No more harsh white) */
         div[data-baseweb="input"] {
-            background-color: #FFFFFF !important;
+            background-color: #1E1E1E !important; /* Dark Charcoal */
+            border: 1px solid #333333 !important; /* Subtle border */
+            border-radius: 12px !important;
+        }
+        /* Highlight border gold when typing */
+        div[data-baseweb="input"]:focus-within {
             border: 1px solid #D4AF37 !important;
-            border-radius: 12px !important; /* Softer, Apple-like rounded corners */
+            box-shadow: 0 0 8px rgba(212, 175, 55, 0.2);
         }
         input, textarea {
-            color: #1D1D1F !important; /* Apple's deep charcoal text, not pure black */
-            -webkit-text-fill-color: #1D1D1F !important;
-            caret-color: #D4AF37 !important;
-            font-weight: 400;
+            color: #FFFFFF !important; /* White Text */
+            -webkit-text-fill-color: #FFFFFF !important;
+            caret-color: #D4AF37 !important; /* Gold Cursor */
         }
+        /* Dropdowns */
         div[data-baseweb="select"] > div {
-             background-color: #FFFFFF !important;
-             color: #1D1D1F !important;
-             border: 1px solid #D4AF37 !important;
+             background-color: #1E1E1E !important;
+             color: #FFFFFF !important;
+             border: 1px solid #333333 !important;
         }
         
-        /* 4. BUTTONS - Smooth Gradient & Rounding */
+        /* 4. BUTTONS - Luxury Gold Pill */
         div.stButton > button {
-            background-image: linear-gradient(180deg, #D4AF37 0%, #C5A028 100%);
+            background-image: linear-gradient(180deg, #D4AF37 0%, #B4941F 100%);
             color: #000000 !important;
-            border-radius: 980px !important; /* Pill shape buttons (Classic Apple style) */
+            border-radius: 30px !important;
             border: none !important;
-            padding: 14px 28px !important;
-            font-weight: 600 !important;
-            font-size: 17px !important;
-            letter-spacing: -0.2px;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            padding: 12px 28px !important;
+            font-weight: 700 !important;
+            letter-spacing: 0.5px;
+            transition: all 0.2s ease;
         }
         div.stButton > button:hover {
-            transform: scale(1.02); /* Subtle grow effect */
-            box-shadow: 0 0 20px rgba(212, 175, 55, 0.4);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
+            filter: brightness(1.1);
         }
 
-        /* 5. CARDS - Glassmorphism hint */
+        /* 5. CARDS & CONTAINERS */
         div[data-testid="stForm"], div[data-testid="stExpander"], .stContainer {
-            background-color: #1C1C1E !important; /* Apple Dark Mode Grey */
-            border: 1px solid #2C2C2E;
-            border-left: 4px solid #D4AF37;
-            border-radius: 18px; /* Larger radius */
+            background-color: #151515 !important;
+            border: 1px solid #252525;
+            border-left: 3px solid #D4AF37; /* Gold Accent */
+            border-radius: 16px;
             padding: 24px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
         }
 
         /* 6. TABS */
         button[data-baseweb="tab"] {
             background-color: transparent !important;
-            color: #86868B !important; /* Apple Grey */
-            font-size: 15px;
+            color: #888888 !important;
         }
         button[data-baseweb="tab"][aria-selected="true"] {
              color: #D4AF37 !important;
@@ -97,10 +101,10 @@ def local_css():
         .new-badge {
             background-color: #D4AF37;
             color: #000;
-            padding: 4px 8px;
-            border-radius: 6px;
+            padding: 2px 6px;
+            border-radius: 4px;
             font-size: 0.6em;
-            font-weight: 700;
+            font-weight: 800;
             vertical-align: middle;
             margin-left: 6px;
         }
@@ -413,7 +417,13 @@ def page_inventory(hh_id):
     shopping_list_names = {d.to_dict()['item_name'].lower() for d in shop_docs}
 
     if not items:
-        st.info("Empty.")
+        # IMPROVED EMPTY STATE
+        with st.container():
+            st.markdown("### 🌪️ Your Kitchen is Empty")
+            st.info("It looks like you haven't added anything yet.")
+            if st.button("Add Your First Item 📝"):
+                st.session_state.current_page = 'manual_add'
+                st.rerun()
         return
         
     items.sort(key=lambda x: x.get('item_name', ''))
