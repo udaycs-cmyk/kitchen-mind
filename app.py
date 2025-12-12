@@ -15,111 +15,101 @@ import math
 st.set_page_config(
     page_title="RE:STOCK Pro",
     page_icon="https://cdn-icons-png.flaticon.com/512/2921/2921822.png",
-    layout="centered",
-    initial_sidebar_state="collapsed"
+    layout="wide", # Wide layout looks better for "Dashboard" cards
+    initial_sidebar_state="expanded"
 )
 
-# --- CUSTOM CSS (ADAPTIVE DAY/NIGHT LUXURY THEME) ---
+# --- CUSTOM CSS (PREMIUM DASHBOARD THEME) ---
 def local_css():
     st.markdown("""
     <style>
-        /* 1. TYPOGRAPHY - Gold Headers (Visible in both modes) */
-        h1, h2, h3, h4, h5, h6 { 
+        /* 1. BACKGROUND & SIDEBAR - Seamless Dark Theme */
+        .stApp {
+            background-color: #0E0E0E;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+        }
+        
+        [data-testid="stSidebar"] {
+            background-color: #050505; /* Darker than main */
+            border-right: 1px solid #333;
+        }
+
+        /* 2. TYPOGRAPHY - High End */
+        h1, h2, h3 { 
             color: #D4AF37 !important; 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             font-weight: 700; 
             letter-spacing: -0.5px;
+            text-transform: capitalize;
         }
+        p, label, span, div { color: #E0E0E0 !important; font-size: 15px; }
         
-        /* 2. ADAPTIVE INPUT FIELDS (The Fix) */
-        /* We make the background transparent so it works on White OR Black pages */
+        /* Metric Labels (Small text above numbers) */
+        [data-testid="stMetricLabel"] {
+            color: #888888 !important;
+            font-size: 14px !important;
+        }
+        [data-testid="stMetricValue"] {
+            color: #FFFFFF !important;
+            font-weight: 600 !important;
+        }
+
+        /* 3. INPUT FIELDS - Sleek Dark */
         div[data-baseweb="input"] {
-            background-color: transparent !important;
-            border: 2px solid #D4AF37 !important; /* Gold Border */
+            background-color: #1A1A1A !important;
+            border: 1px solid #333333 !important;
             border-radius: 12px !important;
         }
-        
-        /* Force text to adapt to the system theme (Black in Light Mode, White in Dark Mode) */
         input, textarea {
-            background-color: transparent !important;
-            color: inherit !important; 
-            font-size: 18px !important;
-            font-weight: 500;
+            color: #FFFFFF !important;
+            caret-color: #D4AF37 !important;
         }
         
-        /* Fix for the placeholder text visibility */
-        ::placeholder {
-            color: #888888 !important;
-            opacity: 1;
-        }
-
-        /* Dropdowns - Selectbox */
-        div[data-baseweb="select"] > div {
-             background-color: transparent !important;
-             border: 2px solid #D4AF37 !important;
-             color: inherit !important;
-        }
-        
-        /* 3. BUTTONS - Solid Gold (High Contrast on both backgrounds) */
+        /* 4. BUTTONS - Gold Gradient Pill */
         div.stButton > button {
-            background-image: linear-gradient(180deg, #D4AF37 0%, #B4941F 100%);
-            color: #000000 !important; /* Always Black text on Gold button */
-            border-radius: 30px !important;
+            background-image: linear-gradient(135deg, #D4AF37 0%, #B4941F 100%);
+            color: #000000 !important;
+            border-radius: 8px !important;
             border: none !important;
-            height: 55px !important;
-            font-size: 18px !important;
             font-weight: 700 !important;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-            transition: transform 0.2s;
+            transition: all 0.3s ease;
         }
-        div.stButton > button:active {
-            transform: scale(0.98);
+        div.stButton > button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4);
         }
 
-        /* 4. CARDS - Adaptive Border Style */
-        div[data-testid="stForm"], div[data-testid="stExpander"], .stContainer {
-            background-color: transparent !important; /* Let theme color show through */
-            border: 1px solid #DDDDDD; /* Light grey border */
-            border-left: 5px solid #D4AF37; /* Gold accent */
+        /* 5. ITEM CARDS - The "Premium" Look */
+        .item-card {
+            background-color: #161616;
+            border: 1px solid #2A2A2A;
             border-radius: 16px;
             padding: 20px;
             margin-bottom: 15px;
+            transition: border 0.3s ease;
         }
-        
-        /* Dark Mode Specific Overrides (If system is dark, lighten the card borders) */
-        @media (prefers-color-scheme: dark) {
-            div[data-testid="stForm"], div[data-testid="stExpander"], .stContainer {
-                border: 1px solid #333333;
-                border-left: 5px solid #D4AF37;
-            }
+        .item-card:hover {
+            border: 1px solid #D4AF37;
         }
 
-        /* 5. TABS */
-        button[data-baseweb="tab"] {
-            background-color: transparent !important;
-            font-size: 16px;
-            font-weight: 600;
-        }
-        button[data-baseweb="tab"][aria-selected="true"] {
-             color: #D4AF37 !important;
-             border-bottom: 3px solid #D4AF37 !important;
-        }
-
-        /* 6. MOBILE PADDING */
-        .block-container {
-            padding-top: 1rem;
-            padding-bottom: 5rem;
-        }
-        
-        /* 7. BADGES */
-        .new-badge {
+        /* 6. PROGRESS BAR - Gold */
+        .stProgress > div > div > div > div {
             background-color: #D4AF37;
-            color: black;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 0.6em;
-            vertical-align: middle;
         }
+
+        /* 7. LOGIN TITLE VISIBILITY FIX */
+        .login-title {
+            font-size: 3rem;
+            font-weight: 800;
+            background: -webkit-linear-gradient(#FFD700, #B8860B);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        
+        /* Hide default header/footer */
+        header {visibility: hidden;}
+        footer {visibility: hidden;}
     </style>
     """, unsafe_allow_html=True)
 
@@ -197,12 +187,20 @@ def main():
 
 def sidebar_nav():
     with st.sidebar:
-        st.markdown("### 🥗 Menu")
-        if st.button("🏠 Home Dashboard"):
+        st.markdown("## RE:STOCK")
+        st.caption("Premium Inventory")
+        if st.button("🏠 Dashboard"):
             st.session_state.current_page = 'home'
             st.rerun()
+        if st.button("📦 My Stock"):
+            st.session_state.current_page = 'inventory'
+            st.rerun()
+        if st.button("🛒 Shopping List"):
+            st.session_state.current_page = 'shopping_list'
+            st.rerun()
+            
         st.divider()
-        st.caption(f"Household: {st.session_state.user_info['household_id']}")
+        st.caption(f"ID: {st.session_state.user_info['household_id']}")
         if st.button("Log Out"):
             st.session_state.user_info = None
             st.session_state.current_page = 'home'
@@ -211,15 +209,15 @@ def sidebar_nav():
 def login_signup_screen():
     c1, c2, c3 = st.columns([1,2,1])
     with c2:
-        st.markdown("<h1 style='text-align: center; color: #D4AF37; margin-bottom: 5px;'>RE:STOCK</h1>", unsafe_allow_html=True)
-        st.markdown("<p style='text-align: center; font-size: 14px; opacity: 0.7;'>PREMIUM KITCHEN MANAGER</p>", unsafe_allow_html=True)
+        # Use custom HTML for the title to ensure visibility
+        st.markdown('<div class="login-title">KITCHENMIND</div>', unsafe_allow_html=True)
+        st.markdown("<p style='text-align: center; color: #888; font-size: 0.9em; margin-top: -10px;'>SMART HOME INVENTORY</p>", unsafe_allow_html=True)
         st.write("")
         
         tab1, tab2 = st.tabs(["LOGIN", "REGISTER"])
         
         with tab1:
             with st.form("login_form"):
-                st.markdown("#### Welcome Back")
                 email = st.text_input("Email").lower().strip()
                 password = st.text_input("Password", type="password")
                 st.write("")
@@ -234,7 +232,6 @@ def login_signup_screen():
 
         with tab2:
             with st.form("signup_form"):
-                st.markdown("#### New Account")
                 new_email = st.text_input("New Email").lower().strip()
                 new_pass = st.text_input("Password", type="password")
                 mode = st.radio("Setup", ["Create New Household", "Join Existing"])
@@ -260,30 +257,27 @@ def login_signup_screen():
 def page_home_dashboard(hh_id):
     st.markdown("<h2>👋 Dashboard</h2>", unsafe_allow_html=True)
     
-    c1, c2 = st.columns(2)
+    c1, c2, c3, c4 = st.columns(4)
     with c1:
-        st.markdown("#### 📸 AI Scanner <span class='new-badge'>PRO</span>", unsafe_allow_html=True)
-        if st.button("Scan Items"):
-            st.session_state.current_page = 'kitchen_mind_pro'
-            st.rerun()
+        with st.container(border=True):
+            st.markdown("#### 📸 Scan")
+            st.caption("AI Entry")
+            if st.button("Launch"): st.session_state.current_page = 'kitchen_mind_pro'; st.rerun()
     with c2:
-        st.markdown("#### 📝 Manual")
-        if st.button("Type Entry"):
-            st.session_state.current_page = 'manual_add'
-            st.rerun()
-            
-    st.write("")
-    c3, c4 = st.columns(2)
+        with st.container(border=True):
+            st.markdown("#### 📝 Add")
+            st.caption("Manual")
+            if st.button("Type"): st.session_state.current_page = 'manual_add'; st.rerun()
     with c3:
-        st.markdown("#### 📦 Inventory")
-        if st.button("View Stock"):
-            st.session_state.current_page = 'inventory'
-            st.rerun()
+        with st.container(border=True):
+            st.markdown("#### 📦 Stock")
+            st.caption("View All")
+            if st.button("View"): st.session_state.current_page = 'inventory'; st.rerun()
     with c4:
-        st.markdown("#### 🛒 Cart")
-        if st.button("Shopping List"):
-            st.session_state.current_page = 'shopping_list'
-            st.rerun()
+        with st.container(border=True):
+            st.markdown("#### 🛒 Cart")
+            st.caption("To Buy")
+            if st.button("Shop"): st.session_state.current_page = 'shopping_list'; st.rerun()
 
 # --- 5. KITCHEN MIND PRO ---
 def page_kitchen_mind_pro(hh_id):
@@ -303,12 +297,11 @@ def page_kitchen_mind_pro(hh_id):
             up_pic = st.file_uploader("Choose from Device", type=['jpg','png','jpeg'])
             if up_pic: img_buffer = up_pic
 
-        if 'scanned_data' not in st.session_state:
-            st.session_state.scanned_data = None
+        if 'scanned_data' not in st.session_state: st.session_state.scanned_data = None
 
         if img_buffer:
             image = Image.open(img_buffer)
-            if st.button("Analyze This Image", type="primary"):
+            if st.button("Analyze Image", type="primary"):
                 with st.spinner("🤖 Processing..."):
                     try:
                         prompt = """
@@ -320,7 +313,6 @@ def page_kitchen_mind_pro(hh_id):
                         response = client.models.generate_content(model="gemini-flash-latest", contents=[prompt, image])
                         clean_json = response.text.replace("```json","").replace("```","").strip()
                         ai_data = json.loads(clean_json)
-                        
                         for item in ai_data:
                             bc = item.get('barcode', '')
                             db_data = fetch_barcode_data(bc) if bc else None
@@ -330,26 +322,13 @@ def page_kitchen_mind_pro(hh_id):
                                 if (item.get('weight',0)==0) and db_data['weight']>0:
                                     item['weight'] = db_data['weight']
                                     item['weight_unit'] = db_data['weight_unit']
-
                         st.session_state.scanned_data = ai_data
-                    except Exception as e:
-                        st.error(f"Error: {e}")
+                    except Exception as e: st.error(f"Error: {e}")
 
         if st.session_state.scanned_data:
             st.divider()
-            edited_df = st.data_editor(
-                st.session_state.scanned_data,
-                num_rows="dynamic",
-                use_container_width=True,
-                column_config={
-                    "item_name": "Item",
-                    "quantity": st.column_config.NumberColumn("Qty", min_value=1, step=1),
-                    "threshold": st.column_config.NumberColumn("Limit"),
-                    "estimated_expiry": st.column_config.DateColumn("Exp")
-                }
-            )
-
-            if st.button("Confirm & Save to Inventory"):
+            edited_df = st.data_editor(st.session_state.scanned_data, num_rows="dynamic", use_container_width=True)
+            if st.button("Save All"):
                 batch = db.batch()
                 for item in edited_df:
                     ref = db.collection('inventory').document()
@@ -377,35 +356,28 @@ def page_manual_add(hh_id):
     st.markdown("## 📝 Manual Add")
     
     with st.form("manual_add"):
-        name = st.text_input("Item Name")
-        category = st.selectbox("Category", ["Produce", "Dairy", "Meat", "Pantry", "Frozen", "Spices", "Beverages", "Household"])
+        c1, c2 = st.columns([2,1])
+        name = c1.text_input("Item Name")
+        category = c2.selectbox("Category", ["Produce", "Dairy", "Meat", "Pantry", "Frozen", "Spices", "Beverages", "Household"])
         
-        c1, c2 = st.columns(2)
-        qty = c1.number_input("Count", 1.0, step=0.5)
-        init_qty = c2.number_input("Full Size", 1.0, step=0.5, value=qty)
+        c3, c4, c5 = st.columns(3)
+        qty = c3.number_input("Count", 1.0, step=0.5)
+        weight = c4.number_input("Weight", 0.0, step=0.5)
+        w_unit = c5.selectbox("Unit", ["count", "oz", "lbs", "g", "kg", "ml", "L", "gal"])
         
-        c3, c4 = st.columns(2)
-        weight = c3.number_input("Weight", 0.0, step=0.5)
-        w_unit = c4.selectbox("Unit", ["count", "oz", "lbs", "g", "kg", "ml", "L", "gal"])
+        c6, c7, c8 = st.columns(3)
+        threshold = c6.number_input("Alert Limit", 1.0)
+        expiry = c7.date_input("Expiry", datetime.date.today() + datetime.timedelta(days=7))
+        store = c8.selectbox("Store", ["General", "Costco", "Whole Foods", "Trader Joe's"])
         
-        st.divider()
-        c5, c6 = st.columns(2)
-        threshold = c5.number_input("Min Limit", 1.0)
-        expiry = c6.date_input("Expiry", datetime.date.today() + datetime.timedelta(days=7))
-        store = st.selectbox("Store", ["General", "Costco", "Whole Foods", "Trader Joe's"])
-        
-        notes = st.text_area("Notes")
-        barcode = st.text_input("Barcode")
-
         if st.form_submit_button("Save Item"):
             if name:
                 db.collection('inventory').add({
                     "item_name": name, "category": category,
-                    "quantity": float(qty), "initial_quantity": float(init_qty),
+                    "quantity": float(qty), "initial_quantity": float(qty),
                     "weight": float(weight), "weight_unit": w_unit,
                     "threshold": float(threshold), "estimated_expiry": str(expiry),
-                    "suggested_store": store, "notes": notes, "barcode": barcode,
-                    "household_id": hh_id,
+                    "suggested_store": store, "household_id": hh_id,
                     "added_at": firestore.SERVER_TIMESTAMP,
                     "last_updated": firestore.SERVER_TIMESTAMP,
                     "last_restocked": firestore.SERVER_TIMESTAMP,
@@ -416,113 +388,108 @@ def page_manual_add(hh_id):
                 st.session_state.current_page = 'inventory'
                 st.rerun()
 
-# --- 7. INVENTORY ---
+# --- 7. INVENTORY (PREMIUM UI) ---
 def page_inventory(hh_id):
     st.button("← Back", on_click=lambda: st.session_state.update(current_page='home'))
     st.markdown("## 📦 Stock")
     
     docs = db.collection('inventory').where('household_id', '==', hh_id).stream()
     items = [{'id': d.id, **d.to_dict()} for d in docs]
-    
     shop_docs = db.collection('shopping_list').where('household_id', '==', hh_id).where('status', '==', 'Pending').stream()
     shopping_list_names = {d.to_dict()['item_name'].lower() for d in shop_docs}
 
     if not items:
         st.info("No items yet.")
-        if st.button("Add Item"):
-            st.session_state.current_page = 'manual_add'
-            st.rerun()
+        if st.button("Add Item"): st.session_state.current_page = 'manual_add'; st.rerun()
         return
         
     items.sort(key=lambda x: x.get('item_name', ''))
     today = datetime.date.today()
     
     for item in items:
+        # LOGIC
         current_qty = float(item.get('quantity', 1))
         initial_qty = float(item.get('initial_quantity', current_qty))
         thresh = float(item.get('threshold', 1))
         daily_use = float(item.get('daily_usage', 0))
         
-        try:
-            exp = datetime.datetime.strptime(item.get('estimated_expiry', ''), "%Y-%m-%d").date()
-            d_spoil = (exp - today).days
-        except: d_spoil = 999
+        try: exp_date = datetime.datetime.strptime(item.get('estimated_expiry', ''), "%Y-%m-%d").date()
+        except: exp_date = today + datetime.timedelta(days=365)
         
-        d_empty = int(current_qty/daily_use) if daily_use > 0 else 999
-        days_left = min(d_spoil, d_empty)
-        qty_deficit = max(1.0, thresh - current_qty) 
+        days_left_spoil = (exp_date - today).days
+        days_left_empty = int(current_qty/daily_use) if daily_use > 0 else 999
+        days_left_real = min(days_left_spoil, days_left_empty)
         
-        is_low = current_qty < thresh
-        is_urgent = days_left < 7
+        # Calculate Progress (0.0 to 1.0)
+        safe_initial = initial_qty if initial_qty > 0 else 1.0
+        progress_val = min(max(current_qty / safe_initial, 0.0), 1.0)
         
-        if (is_low or is_urgent) and item['item_name'].lower() not in shopping_list_names:
-            db.collection('shopping_list').add({
-                "item_name": item['item_name'], "household_id": hh_id,
-                "store": item.get('suggested_store', 'General'),
-                "qty_needed": qty_deficit,
-                "status": "Pending", "reason": "Auto-Refill"
-            })
-            shopping_list_names.add(item['item_name'].lower())
-            st.toast(f"🚨 Added {item['item_name']}")
+        # Color Badge
+        if days_left_real < 0: status_color = "🔴 Expired"
+        elif days_left_real < 7: status_color = "🟠 Low"
+        else: status_color = "🟢 Good"
 
-        if days_left < 0: badge = "🔴 Exp"
-        elif days_left < 7: badge = f"🟠 {days_left}d"
-        else: badge = f"🟢 {days_left}d"
+        # --- PREMIUM CARD UI ---
+        with st.container(border=True): # Creates the card outline
+            # HEADER: Name + Tag + Status
+            c_top1, c_top2 = st.columns([3, 1])
+            with c_top1:
+                st.markdown(f"### {item['item_name']}")
+                st.caption(f"{item.get('category', 'General').upper()} • {item.get('store', 'General')}")
+            with c_top2:
+                st.markdown(f"**{status_color}**")
+            
+            st.divider()
+            
+            # METRICS GRID
+            m1, m2, m3 = st.columns(3)
+            m1.metric("Quantity", f"{current_qty}", delta_color="off")
+            m2.metric("Days Left", f"{days_left_real} d")
+            if daily_use > 0:
+                empty_date = today + datetime.timedelta(days=days_left_empty)
+                m3.metric("Empty By", empty_date.strftime("%b %d"))
+            else:
+                m3.metric("Usage", "Unknown")
 
-        with st.container():
-            c1, c2 = st.columns([2,1])
-            c1.markdown(f"**{item['item_name']}**")
-            c1.caption(f"{badge} • {item.get('category','Gen')}")
+            # VISUAL STOCK LEVEL
+            st.caption("Stock Level")
+            st.progress(progress_val)
             
-            new_q = c2.number_input("", 0.0, step=0.5, value=current_qty, key=f"q_{item['id']}", label_visibility="collapsed")
-            
-            with st.expander("Edit"):
-                n_init = st.number_input("Full Size", 0.0, value=initial_qty, key=f"iq_{item['id']}")
-                n_w = st.number_input("Weight", 0.0, value=float(item.get('weight',0)), key=f"w_{item['id']}")
-                n_thr = st.number_input("Limit", 0.0, value=thresh, key=f"t_{item['id']}")
-                n_use = st.number_input("Daily Use", 0.0, value=daily_use, key=f"du_{item['id']}")
+            # ACTION FOOTER (Edit/Controls)
+            with st.expander("Update / Edit"):
+                ec1, ec2 = st.columns(2)
+                new_q = ec1.number_input("Adjust Qty", 0.0, step=0.5, value=current_qty, key=f"q_{item['id']}")
+                new_use = ec2.number_input("Daily Use", 0.0, step=0.1, value=daily_use, key=f"u_{item['id']}")
                 
-                c_b1, c_b2 = st.columns(2)
-                if c_b1.button("Delete", key=f"d_{item['id']}"):
-                    db.collection('inventory').document(item['id']).delete()
+                if new_q != current_qty or new_use != daily_use:
+                    updates = {'quantity': new_q, 'daily_usage': new_use, 'last_updated': firestore.SERVER_TIMESTAMP}
+                    if new_q > current_qty: updates['last_restocked'] = firestore.SERVER_TIMESTAMP
+                    db.collection('inventory').document(item['id']).update(updates)
                     st.rerun()
-                if c_b2.button("Add to List", key=f"l_{item['id']}"):
-                    needed = max(1.0, thresh - new_q)
+                
+                # Buttons
+                b1, b2 = st.columns(2)
+                if b1.button("🗑️ Delete", key=f"d_{item['id']}"):
+                    db.collection('inventory').document(item['id']).delete(); st.rerun()
+                if b2.button("➕ Add to Cart", key=f"ac_{item['id']}"):
+                    deficit = max(1.0, thresh - current_qty)
                     db.collection('shopping_list').add({
                         "item_name": item['item_name'], "household_id": hh_id,
-                        "store": item.get('suggested_store', 'General'),
-                        "qty_needed": needed,
-                        "status": "Pending", "reason": "Manual Add"
+                        "qty_needed": deficit, "status": "Pending", "store": item.get('store', 'General')
                     })
-                    st.toast(f"Added")
-
-            updates = {}
-            if new_q != current_qty: 
-                updates['quantity'] = new_q
-                updates['last_updated'] = firestore.SERVER_TIMESTAMP
-            if n_init != initial_qty: updates['initial_quantity'] = n_init
-            if n_w != float(item.get('weight',0)): updates['weight'] = n_w
-            if n_thr != thresh: updates['threshold'] = n_thr
-            if n_use != daily_use: updates['daily_usage'] = n_use
-            
-            if updates:
-                db.collection('inventory').document(item['id']).update(updates)
-                st.rerun()
+                    st.toast("Added to Cart")
 
 # --- 8. SHOPPING LIST ---
 def page_shopping_list(hh_id):
     st.button("← Back", on_click=lambda: st.session_state.update(current_page='home'))
-    st.markdown("## 🛒 Cart")
+    st.markdown("## 🛒 Shopping List")
     
     with st.form("quick"):
-        c1,c2 = st.columns([2,1])
+        c1,c2 = st.columns([3,1])
         it = c1.text_input("Item")
-        qn = c2.number_input("Qty", 1.0, step=1.0) 
-        if st.form_submit_button("Add Item") and it:
+        if st.form_submit_button("Add") and it:
             db.collection('shopping_list').add({
-                "item_name":it, "household_id":hh_id, 
-                "qty_needed": float(qn),
-                "status":"Pending", "store":"General"
+                "item_name":it, "household_id":hh_id, "qty_needed": 1.0, "status":"Pending", "store":"General"
             })
             st.rerun()
     st.divider()
@@ -530,27 +497,16 @@ def page_shopping_list(hh_id):
     docs = db.collection('shopping_list').where('household_id','==',hh_id).where('status','==','Pending').stream()
     data = [{'id':d.id, **d.to_dict()} for d in docs]
     
-    if not data:
-        st.success("List is empty!")
-        return
+    if not data: st.success("List is empty!"); return
 
     stores = list(set([d.get('store','General') for d in data]))
-    
     for s in stores:
         st.markdown(f"#### 📍 {s}")
-        store_items = [d for d in data if d.get('store')==s]
-        
-        for i in store_items:
-            c_check, c_info = st.columns([1, 4])
-            with c_check:
-                if st.button("✓", key=i['id']):
-                    db.collection('shopping_list').document(i['id']).update({"status":"Bought"})
-                    st.rerun()
-            with c_info:
-                qty_show = float(i.get('qty_needed', 1))
-                qty_str = f"{int(qty_show)}" if qty_show.is_integer() else f"{qty_show}"
-                st.markdown(f"**{i['item_name']}**")
-                st.caption(f"Buy: {qty_str}")
+        for i in [d for d in data if d.get('store')==s]:
+            c1,c2 = st.columns([1,4])
+            if c1.button("✓", key=i['id']):
+                db.collection('shopping_list').document(i['id']).update({"status":"Bought"}); st.rerun()
+            c2.markdown(f"**{i['item_name']}** (Buy: {int(i.get('qty_needed',1))})")
         st.divider()
 
 if __name__ == "__main__":
