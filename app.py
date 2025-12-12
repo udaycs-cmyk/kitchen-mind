@@ -179,8 +179,8 @@ def main():
 
 def sidebar_nav():
     with st.sidebar:
-        st.markdown("## 🥗 KitchenMind")
-        if st.button("🏠 Home Dashboard"):
+        st.markdown("## RE:Stock Pro")
+        if st.button("🏠 Home"):
             st.session_state.current_page = 'home'
             st.rerun()
         st.divider()
@@ -245,7 +245,7 @@ def page_home_dashboard(hh_id):
     
     col1, col2 = st.columns(2)
     with col1:
-        st.markdown("### 📸 KitchenMind Pro <span class='new-badge'>NEW</span>", unsafe_allow_html=True)
+        st.markdown("### 📸 Kitchen Mind Pro <span class='new-badge'>NEW</span>", unsafe_allow_html=True)
         st.info("AI-Powered Scanner")
         if st.button("Launch Scanner 🚀"):
             st.session_state.current_page = 'kitchen_mind_pro'
@@ -260,7 +260,7 @@ def page_home_dashboard(hh_id):
     st.write("")
     col3, col4 = st.columns(2)
     with col3:
-        st.markdown("### 📦 Inventory")
+        st.markdown("### 📦 Your Inventory")
         st.info("View Stock Levels")
         if st.button("View Kitchen 🥬"):
             st.session_state.current_page = 'inventory'
@@ -538,4 +538,5 @@ def page_shopping_list(hh_id):
 
 if __name__ == "__main__":
     main()
+
 
