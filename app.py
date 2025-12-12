@@ -9,6 +9,7 @@ import uuid
 import time
 import requests
 import re
+import math
 
 # --- 1. CONFIGURATION & SETUP ---
 st.set_page_config(page_title="KitchenMind Pro", page_icon="🥗", layout="wide")
@@ -32,20 +33,15 @@ def local_css():
     """, unsafe_allow_html=True)
 
 # --- API & DATABASE ---
-# --- API & DATABASE SETUP ---
-# Setup Gemini AI (Handles both Cloud Secrets and Local Key)
 if "GEMINI_API_KEY" in st.secrets:
     GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
 else:
-    # REPLACE THIS IF RUNNING ON LAPTOP
-    GEMINI_API_KEY = "PASTE_YOUR_LOCAL_KEY_HERE" 
+    GEMINI_API_KEY = "PASTE_YOUR_LOCAL_KEY_HERE"
 
 try:
     client = genai.Client(api_key=GEMINI_API_KEY)
 except Exception as e:
     st.warning(f"⚠️ Gemini API Warning: {e}")
-
-    # Setup Firebase
 
 if not firebase_admin._apps:
     if "firebase" in st.secrets:
@@ -63,7 +59,6 @@ db = firestore.client()
 
 # --- HELPER: BARCODE FETCH & PARSE ---
 def fetch_barcode_data(barcode):
-    """Fetches details from OpenFoodFacts. Returns structured dict or None."""
     if not barcode or len(barcode) < 5: return None
     try:
         url = f"https://world.openfoodfacts.org/api/v0/product/{barcode}.json"
@@ -71,29 +66,23 @@ def fetch_barcode_data(barcode):
         data = response.json()
         if data.get('status') == 1:
             p = data['product']
-            
-            # Smart Weight Parsing (e.g. "500 g" -> 500, 'g')
-            raw_qty = p.get('quantity', '') # e.g. "330ml"
+            raw_qty = p.get('quantity', '')
             weight_val = 0.0
             unit_val = 'count'
-            
             if raw_qty:
-                # Regex to find number and text
                 match = re.match(r"([0-9.]+)\s*([a-zA-Z]+)", raw_qty)
                 if match:
                     try:
                         weight_val = float(match.group(1))
                         unit_val = match.group(2).lower()
                     except: pass
-
             return {
                 "item_name": p.get('product_name', ''),
                 "notes": p.get('brands', ''),
                 "weight": weight_val,
                 "weight_unit": unit_val
             }
-    except:
-        return None
+    except: return None
     return None
 
 # --- 2. MAIN NAVIGATION ---
@@ -191,11 +180,11 @@ def page_home_dashboard(hh_id):
             st.session_state.current_page = 'shopping_list'
             st.rerun()
 
-# --- 5. KITCHEN MIND PRO (AI + WEIGHT LOGIC) ---
+# --- 5. KITCHEN MIND PRO ---
 def page_kitchen_mind_pro(hh_id):
     st.button("← Back Home", on_click=lambda: st.session_state.update(current_page='home'))
     st.title("📸 KitchenMind Pro")
-    st.info("AI Priority: Gemini Data first. Barcode Data used only if AI is empty.")
+    st.info("AI Priority. Barcode Backup.")
 
     if 'scanned_data' not in st.session_state:
         st.session_state.scanned_data = None
@@ -207,45 +196,27 @@ def page_kitchen_mind_pro(hh_id):
         st.image(image, width=300)
         
         if st.button("Analyze Image"):
-            with st.spinner("🤖 Analyzing Items, Weights & Barcodes..."):
+            with st.spinner("🤖 Analyzing..."):
                 try:
-                    # PROMPT: Specifically asking for weight separate from quantity
                     prompt = """
-                    Analyze image. If barcode visible, read digits accurately.
-                    Return JSON list. Fields: 
-                    - item_name (string)
-                    - quantity (float. Count of items e.g. 2 bottles. Default 1)
-                    - weight (float. Net weight per item e.g. 16.5)
-                    - weight_unit (string. e.g. oz, g, kg, lbs, ml. Default 'count' if N/A)
-                    - category, estimated_expiry (YYYY-MM-DD)
-                    - threshold (float), suggested_store, storage_location, barcode (string), notes
+                    Analyze image. Return JSON list. Fields: 
+                    - item_name, quantity (float), weight (float), weight_unit,
+                    - category, estimated_expiry (YYYY-MM-DD), threshold (float),
+                    - suggested_store, storage_location, barcode, notes
                     """
                     response = client.models.generate_content(model="gemini-flash-latest", contents=[prompt, image])
                     clean_json = response.text.replace("```json","").replace("```","").strip()
                     ai_data = json.loads(clean_json)
                     
-                    # --- PRIORITY LOGIC ---
                     for item in ai_data:
                         bc = item.get('barcode', '')
-                        
-                        # 1. Fetch Barcode Data (Backup)
                         db_data = fetch_barcode_data(bc) if bc else None
-                        
                         if db_data:
-                            # 2. Apply ONLY if AI field is missing/empty
-                            if not item.get('item_name'): 
-                                item['item_name'] = db_data['item_name']
-                                st.toast(f"Used Barcode Name for {bc}")
-                            
-                            if not item.get('notes'): 
-                                item['notes'] = db_data['notes']
-                                
-                            # Weight Fallback
-                            ai_weight = item.get('weight', 0)
-                            if (ai_weight is None or ai_weight == 0) and db_data['weight'] > 0:
+                            if not item.get('item_name'): item['item_name'] = db_data['item_name']
+                            if not item.get('notes'): item['notes'] = db_data['notes']
+                            if (item.get('weight',0)==0) and db_data['weight']>0:
                                 item['weight'] = db_data['weight']
                                 item['weight_unit'] = db_data['weight_unit']
-                                st.toast(f"Used Barcode Weight for {bc}")
 
                     st.session_state.scanned_data = ai_data
                 except Exception as e:
@@ -253,185 +224,10 @@ def page_kitchen_mind_pro(hh_id):
 
     if st.session_state.scanned_data:
         st.divider()
-        st.write("👇 **Review Details (AI & Barcode Merged)**")
         edited_df = st.data_editor(
             st.session_state.scanned_data,
             num_rows="dynamic",
             use_container_width=True,
             column_config={
                 "item_name": "Item Name",
-                "quantity": st.column_config.NumberColumn("Count (Qty)", min_value=1, step=1),
-                "weight": st.column_config.NumberColumn("Weight", min_value=0.0, step=0.1, format="%.1f"),
-                "weight_unit": st.column_config.SelectboxColumn("Unit", options=["count", "oz", "lbs", "g", "kg", "ml", "L", "gal"]),
-                "threshold": st.column_config.NumberColumn("Min Limit"),
-                "estimated_expiry": st.column_config.DateColumn("Expiry"),
-                "barcode": "Barcode"
-            }
-        )
-
-        if st.button("Confirm & Save", type="primary"):
-            batch = db.batch()
-            for item in edited_df:
-                ref = db.collection('inventory').document()
-                qty = float(item.get('quantity', 1))
-                item.update({
-                    'quantity': qty, 'initial_quantity': qty,
-                    'weight': float(item.get('weight', 0)),
-                    'weight_unit': item.get('weight_unit', 'count'),
-                    'household_id': hh_id,
-                    'added_at': firestore.SERVER_TIMESTAMP,
-                    'last_updated': firestore.SERVER_TIMESTAMP,
-                    'last_restocked': firestore.SERVER_TIMESTAMP
-                })
-                batch.set(ref, item)
-            batch.commit()
-            st.success("Saved!")
-            st.session_state.scanned_data = None
-            time.sleep(1)
-            st.session_state.current_page = 'inventory'
-            st.rerun()
-
-# --- 6. PAGE: MANUAL ADD (WITH WEIGHT) ---
-def page_manual_add(hh_id):
-    st.button("← Back Home", on_click=lambda: st.session_state.update(current_page='home'))
-    st.title("📝 Add to Inventory")
-    
-    with st.form("manual_add"):
-        c1, c2 = st.columns(2)
-        name = c1.text_input("Item Name")
-        category = c2.selectbox("Category", ["Produce", "Dairy", "Meat", "Pantry", "Frozen", "Spices", "Beverages", "Household"])
-        
-        # New Weight Section
-        st.markdown("#### Quantity & Weight")
-        r1_c1, r1_c2, r1_c3 = st.columns(3)
-        qty = r1_c1.number_input("Count (e.g. 2 bottles)", min_value=1.0, step=1.0, value=1.0)
-        weight = r1_c2.number_input("Weight (per item)", min_value=0.0, step=0.5)
-        w_unit = r1_c3.selectbox("Unit", ["count", "oz", "lbs", "g", "kg", "ml", "L", "gal"])
-        
-        r2_c1, r2_c2, r2_c3 = st.columns(3)
-        threshold = r2_c1.number_input("Min Limit", 1.0)
-        expiry = r2_c2.date_input("Expiry", datetime.date.today() + datetime.timedelta(days=7))
-        store = r2_c3.selectbox("Store", ["General", "Costco", "Whole Foods", "Trader Joe's"])
-        
-        notes = st.text_area("Notes")
-        barcode = st.text_input("Barcode")
-
-        if st.form_submit_button("Save Item", type="primary"):
-            if name:
-                db.collection('inventory').add({
-                    "item_name": name, "category": category,
-                    "quantity": float(qty), "initial_quantity": float(qty),
-                    "weight": float(weight), "weight_unit": w_unit, # Saved separately
-                    "threshold": float(threshold),
-                    "estimated_expiry": str(expiry), "suggested_store": store,
-                    "notes": notes, "barcode": barcode,
-                    "household_id": hh_id,
-                    "added_at": firestore.SERVER_TIMESTAMP,
-                    "last_updated": firestore.SERVER_TIMESTAMP,
-                    "last_restocked": firestore.SERVER_TIMESTAMP,
-                    "storage_location": "Pantry"
-                })
-                st.success(f"Added {name}!")
-                time.sleep(1)
-                st.session_state.current_page = 'inventory'
-                st.rerun()
-
-# --- 7. PAGE: INVENTORY (DISPLAY WEIGHT) ---
-def page_inventory(hh_id):
-    st.button("← Back Home", on_click=lambda: st.session_state.update(current_page='home'))
-    st.title("🥬 My Kitchen")
-    
-    docs = db.collection('inventory').where('household_id', '==', hh_id).stream()
-    items = [{'id': d.id, **d.to_dict()} for d in docs]
-    if not items:
-        st.info("Empty.")
-        return
-        
-    items.sort(key=lambda x: x.get('item_name', ''))
-    cols = st.columns(2)
-    today = datetime.date.today()
-    
-    for idx, item in enumerate(items):
-        with cols[idx % 2]:
-            current_qty = float(item.get('quantity', 1))
-            initial_qty = float(item.get('initial_quantity', current_qty))
-            thresh = float(item.get('threshold', 1))
-            daily_use = float(item.get('daily_usage', 0))
-            
-            # ETA Logic
-            try:
-                exp = datetime.datetime.strptime(item.get('estimated_expiry', ''), "%Y-%m-%d").date()
-                d_spoil = (exp - today).days
-            except: d_spoil = 999
-            
-            d_empty = int(current_qty/daily_use) if daily_use > 0 else 999
-            days_left = min(d_spoil, d_empty)
-            
-            if days_left < 0: badge = "🔴 Expired"
-            elif days_left < 7: badge = f"🟠 {days_left}d"
-            else: badge = f"🟢 {days_left}d"
-
-            with st.container():
-                st.markdown(f"**{item['item_name']}**")
-                # SHOW WEIGHT IN SUBTITLE
-                weight_txt = f"{item.get('weight', 0)} {item.get('weight_unit', '')}" if item.get('weight', 0) > 0 else ""
-                st.caption(f"{badge} • {item.get('category','General')} • {weight_txt}")
-                
-                c_q, c_u = st.columns([1,1])
-                new_q = c_q.number_input("Count", 0.0, step=1.0, value=current_qty, key=f"q_{item['id']}")
-                
-                # Manual Weight Edit in Expander
-                with st.expander("Edit Details"):
-                    n_w = st.number_input("Weight", 0.0, value=float(item.get('weight', 0)), key=f"w_{item['id']}")
-                    n_wu = st.text_input("Unit", value=item.get('weight_unit', 'count'), key=f"wu_{item['id']}")
-                    n_thr = st.number_input("Threshold", 0.0, value=thresh, key=f"t_{item['id']}")
-                    n_note = st.text_input("Notes", value=item.get('notes',''), key=f"nt_{item['id']}")
-                
-                # Updates
-                updates = {}
-                if new_q != current_qty: 
-                    updates['quantity'] = new_q
-                    updates['last_updated'] = firestore.SERVER_TIMESTAMP
-                if n_w != float(item.get('weight', 0)): updates['weight'] = n_w
-                if n_wu != item.get('weight_unit', ''): updates['weight_unit'] = n_wu
-                if n_thr != thresh: updates['threshold'] = n_thr
-                if n_note != item.get('notes',''): updates['notes'] = n_note
-                
-                if updates:
-                    db.collection('inventory').document(item['id']).update(updates)
-                    st.rerun()
-
-                c_btn1, c_btn2 = st.columns(2)
-                if c_btn1.button("➕ List", key=f"l_{item['id']}"):
-                    db.collection('shopping_list').add({"item_name": item['item_name'], "household_id": hh_id, "status": "Pending", "store": "General"})
-                    st.toast("Added")
-                if c_btn2.button("🗑️", key=f"d_{item['id']}"):
-                    db.collection('inventory').document(item['id']).delete()
-                    st.rerun()
-            st.write("")
-
-# --- 8. SHOPPING LIST ---
-def page_shopping_list(hh_id):
-    st.button("← Back Home", on_click=lambda: st.session_state.update(current_page='home'))
-    st.title("🛒 Cart")
-    with st.form("quick"):
-        c1,c2 = st.columns([3,1])
-        it = c1.text_input("Item")
-        if c2.form_submit_button("Add") and it:
-            db.collection('shopping_list').add({"item_name":it, "household_id":hh_id, "status":"Pending", "store":"General"})
-            st.rerun()
-    st.divider()
-    docs = db.collection('shopping_list').where('household_id','==',hh_id).where('status','==','Pending').stream()
-    data = [{'id':d.id, **d.to_dict()} for d in docs]
-    stores = list(set([d.get('store','General') for d in data]))
-    for s in stores:
-        st.markdown(f"#### {s}")
-        for i in [d for d in data if d.get('store')==s]:
-            c1,c2 = st.columns([4,1])
-            c1.write(f"- {i['item_name']}")
-            if c2.button("✓", key=i['id']):
-                db.collection('shopping_list').document(i['id']).update({"status":"Bought"})
-                st.rerun()
-
-if __name__ == "__main__":
-    main()
+                "quantity": st.
