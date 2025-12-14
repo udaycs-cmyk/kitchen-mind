@@ -16,7 +16,7 @@ import io
 st.set_page_config(
     page_title="Kitchen Mind Pro",
     page_icon="https://cdn-icons-png.flaticon.com/512/2921/2921822.png",
-    layout="wide",
+    layout="centered",
     initial_sidebar_state="collapsed"
 )
 
