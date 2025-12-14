@@ -244,7 +244,7 @@ def login_signup_screen():
     st.markdown("""
         <div class="landing-hero">
             <h1 style="font-size: 4rem; margin-bottom: 0;">KITCHEN MIND PRO</h1>
-            <p style="font-size: 1.2rem; opacity: 0.8; letter-spacing: 2px;">LUXURY HOME INVENTORY</p>
+            <p style="font-size: 1.2rem; opacity: 0.8; letter-spacing: 2px;">Your Smart Inventory Manager</p>
             <div class="scroll-indicator">
                 <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M12 4V20M12 20L18 14M12 20L6 14" stroke="#D4AF37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
