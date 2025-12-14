@@ -24,10 +24,10 @@ st.set_page_config(
 def local_css():
     st.markdown("""
     <style>
-        /* IMPORT FREDOKA FONT (ROUND & FRIENDLY) */
+        /* IMPORT FREDOKA FONT */
         @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&display=swap');
 
-        /* --- COLOR PALETTE --- */
+        /* --- VARIABLES --- */
         :root {
             --bg-oatmeal: #FDF5EB;
             --text-brown: #4A3B32;
@@ -40,12 +40,11 @@ def local_css():
         /* --- BASE STYLES --- */
         .stApp {
             background-color: var(--bg-oatmeal);
-            font-family: 'Fredoka', sans-serif;
             color: var(--text-brown);
         }
         
-        /* Typography Overrides */
-        h1, h2, h3, h4, h5, h6, p, span, div, label {
+        /* TARGETED Typography Overrides (Removed 'span' and 'div' to fix icons) */
+        h1, h2, h3, h4, h5, h6, p, label, .stButton button, .stTextInput input {
             font-family: 'Fredoka', sans-serif !important;
             color: var(--text-brown) !important;
         }
@@ -67,7 +66,7 @@ def local_css():
         div[data-baseweb="input"]:focus-within {
             border-color: var(--accent-coral) !important;
         }
-        input, textarea {
+        input {
             color: var(--text-brown) !important;
         }
 
@@ -76,7 +75,7 @@ def local_css():
             background-color: var(--accent-coral) !important;
             color: white !important;
             border: none !important;
-            border-radius: 50px !important; /* Pill shape */
+            border-radius: 50px !important;
             padding: 10px 25px !important;
             font-weight: 600 !important;
             font-size: 16px !important;
@@ -87,14 +86,11 @@ def local_css():
             transform: translateY(-3px);
             box-shadow: 0 10px 20px rgba(255, 140, 105, 0.4);
         }
-        div.stButton > button:active {
-            transform: scale(0.95);
-        }
 
         /* --- CARDS (Round & Friendly) --- */
         div[data-testid="stForm"], .element-container .stContainer {
             background-color: var(--card-white);
-            border-radius: 32px; /* Very round corners */
+            border-radius: 32px;
             border: 1px solid #F5EFE6;
             padding: 25px;
             box-shadow: var(--shadow-soft);
@@ -109,7 +105,7 @@ def local_css():
             border: 2px solid #F8F0E6;
         }
 
-        /* --- TABS (Pills) --- */
+        /* --- TABS --- */
         .stTabs [data-baseweb="tab-list"] {
             gap: 10px;
             background-color: transparent;
@@ -163,7 +159,6 @@ def local_css():
             60% {transform: translateY(-7px);}
         }
 
-        /* Hide Streamlit cruft */
         header {visibility: hidden;}
         footer {visibility: hidden;}
     </style>
