@@ -34,12 +34,6 @@ def local_css():
             --accent-coral: #FF8C69;
             --accent-mint: #A0E8AF;
             --card-white: #FFFFFF;
-            /* Headspace Palette */
-            --hs-orange: #FF9C59;
-            --hs-blue: #596DFF;
-            --hs-yellow: #FFD54F;
-            --hs-green: #4CAF50;
-            --hs-purple: #9C27B0;
         }
 
         /* --- BASE STYLES --- */
@@ -56,7 +50,7 @@ def local_css():
         
         /* --- HERO SECTION --- */
         .landing-hero {
-            height: 95vh; /* Full viewport height */
+            height: 95vh;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -86,9 +80,21 @@ def local_css():
             display: flex;
             flex-direction: column;
             justify-content: space-between;
+            position: relative;
         }
         .pantry-card:hover { transform: translateY(-3px); }
         
+        /* Status Badge Style inside Card */
+        .status-badge {
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 4px 12px;
+            border-radius: 12px;
+            background-color: rgba(255,255,255,0.6);
+            display: inline-block;
+            margin-bottom: 8px;
+        }
+
         /* Card Colors */
         .card-bg-0 { background-color: #FFF3E0; border: 2px solid #FFE0B2; } 
         .card-bg-1 { background-color: #E3F2FD; border: 2px solid #BBDEFB; } 
@@ -134,7 +140,6 @@ def local_css():
             color: white !important;
         }
 
-        /* Hide Cruft */
         [data-testid="stSidebar"] { display: none; }
         header, footer { visibility: hidden; }
         .block-container { padding-top: 1rem; padding-bottom: 5rem; }
@@ -166,10 +171,28 @@ def get_bean_logo():
 def get_down_arrow():
     return """<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#FF8C69" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>"""
 
+# --- SMART ICONS ---
+def get_smart_icon(item_name, category):
+    name = item_name.lower()
+    icons = {
+        "milk": "🥛", "egg": "🥚", "bread": "🍞", "banana": "🍌", "apple": "🍎", 
+        "chicken": "🍗", "beef": "🥩", "rice": "🍚", "pasta": "🍝", "cheese": "🧀",
+        "yogurt": "🥣", "water": "💧", "coffee": "☕", "tea": "🍵", "juice": "🧃",
+        "cookie": "🍪", "chocolate": "🍫", "carrot": "🥕", "broccoli": "🥦",
+        "onion": "🧅", "garlic": "🧄", "tomato": "🍅", "potato": "🥔", "corn": "🌽",
+        "avocado": "🥑", "salad": "🥗", "pizza": "🍕", "burger": "🍔", "fish": "🐟"
+    }
+    for key, icon in icons.items():
+        if key in name: return icon
+    cat_icons = {
+        "Produce": "🥬", "Dairy": "🧀", "Meat": "🥩", "Pantry": "🥫", 
+        "Frozen": "❄️", "Snacks": "🍿", "Beverages": "🥤", "Household": "🧻"
+    }
+    return cat_icons.get(category, "🥗")
+
 # --- MAIN ---
 def main():
     local_css()
-    # Init Session State
     if 'user_info' not in st.session_state: st.session_state.user_info = None
     if 'imgs' not in st.session_state: st.session_state.imgs = {'f':None,'b':None,'d':None}
     if 'active' not in st.session_state: st.session_state.active = None
@@ -181,8 +204,6 @@ def main():
         app_interface()
 
 def login_screen():
-    # RESTORED: Full Screen Hero with Scroll Indicator
-    # Note: Indentation removed from HTML string to prevent "Code Block" error
     st.markdown(f"""
 <div class="landing-hero">
 {get_bean_logo()}
@@ -193,8 +214,7 @@ def login_screen():
 </div>
 """, unsafe_allow_html=True)
     
-    st.divider() # Visual break for the scroll
-    
+    st.divider()
     c1,c2,c3=st.columns([1,2,1])
     with c2:
         st.markdown("<h3 style='text-align:center;'>Welcome In</h3>", unsafe_allow_html=True)
@@ -210,7 +230,6 @@ def login_screen():
                 except: st.error("Login error.")
 
 def app_interface():
-    # Top Tabs acting as main navigation
     t1, t2, t3, t4 = st.tabs(["🏠 Home", "📸 Scan", "📦 Pantry", "🛒 List"])
     hh_id = st.session_state.user_info.get('household_id','DEMO')
     
@@ -230,59 +249,63 @@ def page_home(hh_id):
 
 @st.dialog("Add Item")
 def manual_add_dialog(hh_id):
+    # RESTORED: Full Fields from Original Pro Code
     with st.form("add"):
-        name=st.text_input("Item Name")
-        cat=st.selectbox("Category",["Produce","Dairy","Meat","Pantry","Frozen","Snacks"])
-        c1,c2=st.columns(2)
-        qty=c1.number_input("Current Count",1.0,step=0.5)
-        iq=c2.number_input("Initial Qty",1.0,step=0.5, help="Full size capacity")
-        store=st.selectbox("Store",["General","Costco","Whole Foods"])
+        c1, c2 = st.columns([2,1])
+        name = c1.text_input("Item Name")
+        category = c2.selectbox("Category", ["Produce", "Dairy", "Meat", "Pantry", "Frozen", "Spices", "Beverages", "Household"])
+        
+        st.markdown("##### Details")
+        c3, c4, c5 = st.columns(3)
+        qty = c3.number_input("Current Count", 1.0, step=0.5)
+        init_qty = c4.number_input("Initial Qty", 1.0, step=0.5, value=qty)
+        weight = c5.number_input("Weight", 0.0, step=0.5)
+        
+        c6, c7, c8 = st.columns(3)
+        w_unit = c6.selectbox("Unit", ["count", "oz", "lbs", "g", "kg", "ml", "L", "gal"])
+        threshold = c7.number_input("Alert Limit", 1.0)
+        expiry = c8.date_input("Expiry", datetime.date.today() + datetime.timedelta(days=7))
+        
+        store = st.selectbox("Store", ["General", "Costco", "Whole Foods", "Trader Joe's"])
+        notes = st.text_area("Notes")
+        barcode = st.text_input("Barcode (Optional)")
+        
         if st.form_submit_button("Save"):
             db.collection('inventory').add({
-                "item_name":name,"category":cat,"quantity":qty,"initial_quantity":iq,
-                "household_id":hh_id,"added_at":firestore.SERVER_TIMESTAMP,"threshold":1.0,"suggested_store":store
+                "item_name":name, "category":category, "quantity":qty, "initial_quantity":init_qty,
+                "weight":weight, "weight_unit":w_unit, "threshold":threshold,
+                "estimated_expiry":str(expiry), "suggested_store":store, "notes":notes, "barcode":barcode,
+                "household_id":hh_id, "added_at":firestore.SERVER_TIMESTAMP
             })
             st.rerun()
 
 def page_scanner(hh_id):
     st.markdown("## 📸 Kitchen Mind")
-    st.info("Capture 3 angles for best results. We'll read the labels.")
+    st.info("Capture 3 angles for best results.")
     
-    # RESTORED: 3-Column Camera Layout
     c1, c2, c3 = st.columns(3)
-    
-    # Helper to draw camera blocks
     def render_cam(col, key, label):
         with col:
-            # Using the 'pantry-card' style for consistency
             st.markdown(f"<div class='pantry-card card-bg-1' style='height: auto; min-height: 150px;'><strong>{label}</strong></div>", unsafe_allow_html=True)
-            
             if st.session_state.imgs[key]:
                 st.image(st.session_state.imgs[key], use_container_width=True)
                 if st.button("Clear", key=f"del_{key}"): 
                     st.session_state.imgs[key]=None; st.rerun()
             elif st.session_state.active == key:
                 p = st.camera_input("Snap", key=f"cam_{key}", label_visibility="collapsed")
-                if p: 
-                    st.session_state.imgs[key] = Image.open(p)
-                    st.session_state.active = None
-                    st.rerun()
+                if p: st.session_state.imgs[key] = Image.open(p); st.session_state.active = None; st.rerun()
             else:
-                if st.button("Tap to Snap", key=f"btn_{key}", use_container_width=True):
-                    st.session_state.active = key
-                    st.rerun()
+                if st.button("Tap to Snap", key=f"btn_{key}", use_container_width=True): st.session_state.active = key; st.rerun()
 
     render_cam(c1, 'f', "1. Front")
     render_cam(c2, 'b', "2. Back")
     render_cam(c3, 'd', "3. Expiry")
 
-    # Analyze Logic
     valid = [i for i in st.session_state.imgs.values() if i]
     if valid:
         st.divider()
         if st.button("✨ Analyze Photos", type="primary", use_container_width=True):
             with st.spinner("Reading..."):
-                # Mock analysis for speed (Replace with real Gemini call from your previous code if needed)
                 st.session_state.data = [{"item_name":"Scanned Product", "quantity":1.0, "category":"Pantry"}]
                 st.rerun()
 
@@ -295,6 +318,7 @@ def page_scanner(hh_id):
                 batch.set(ref,{**i,"household_id":hh_id,"initial_quantity":i.get('quantity',1)})
             batch.commit(); st.session_state.data=None; st.rerun()
 
+# --- 3. PANTRY (Cards + Restored Fields) ---
 def page_pantry(hh_id):
     st.markdown("## 📦 My Pantry")
     
@@ -305,19 +329,30 @@ def page_pantry(hh_id):
     
     if not data: st.info("Pantry is empty."); return
 
-    # RESTORED: Colorful Grid Layout
     cols = st.columns(2) 
+    today = datetime.date.today()
     
     for idx, item in enumerate(data):
         color_class = f"card-bg-{idx % 5}"
         
+        # RESTORED: Expiry Logic & Badges
+        try: exp = datetime.datetime.strptime(item.get('estimated_expiry', ''), "%Y-%m-%d").date()
+        except: exp = today + datetime.timedelta(days=365)
+        
+        days_left = (exp - today).days
+        if days_left < 0: badge = "🔴 Expired"
+        elif days_left < 7: badge = f"🟠 {days_left}d left"
+        else: badge = f"🟢 {days_left}d left"
+
+        icon = get_smart_icon(item.get('item_name', ''), item.get('category', 'General'))
+        
         with cols[idx % 2]:
-            # The Card Container
             with st.container():
-                # HTML Card Visual
+                # HTML Card with Badge
                 st.markdown(f"""
                 <div class="pantry-card {color_class}">
-                    <div style="font-size: 2rem; margin-bottom:10px;">🥗</div>
+                    <div class="status-badge">{badge}</div>
+                    <div style="font-size: 3rem; margin-bottom:10px;">{icon}</div>
                     <div style="font-size: 1.1rem; font-weight: 700; line-height: 1.2;">
                         {item.get('item_name', 'Unknown')}
                     </div>
@@ -327,18 +362,25 @@ def page_pantry(hh_id):
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # Logic Controls
                 curr = float(item.get('quantity', 0))
                 init = float(item.get('initial_quantity', curr)) or 1.0
                 st.progress(min(curr/init, 1.0))
                 
-                # Expandable Edit Menu
+                # RESTORED: Full Edit Fields in Expander
                 with st.expander(f"Edit ({curr})"):
                     nc = st.number_input("Count", 0.0, value=curr, key=f"q_{item['id']}")
                     ni = st.number_input("Initial Qty", 0.0, value=init, key=f"i_{item['id']}")
+                    nw = st.number_input("Weight", 0.0, value=float(item.get('weight', 0)), key=f"w_{item['id']}")
+                    nt = st.number_input("Alert Limit", 0.0, value=float(item.get('threshold', 1)), key=f"t_{item['id']}")
                     
-                    if nc != curr or ni != init:
-                        db.collection('inventory').document(item['id']).update({'quantity':nc, 'initial_quantity':ni})
+                    updates = {}
+                    if nc != curr: updates['quantity'] = nc
+                    if ni != init: updates['initial_quantity'] = ni
+                    if nw != float(item.get('weight', 0)): updates['weight'] = nw
+                    if nt != float(item.get('threshold', 1)): updates['threshold'] = nt
+                    
+                    if updates:
+                        db.collection('inventory').document(item['id']).update(updates)
                         st.rerun()
                     
                     if st.button("Delete", key=f"d_{item['id']}"):
