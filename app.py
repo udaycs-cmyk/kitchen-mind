@@ -197,13 +197,13 @@ db = firestore.client()
 # --- CUSTOM SVGs (Bean Style Illustrations) ---
 def get_bean_logo():
     return """
-    <svg width="60" height="60" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M50 10C27.9086 10 10 27.9086 10 50C10 72.0914 27.9086 90 50 90C72.0914 90 90 72.0914 90 50C90 27.9086 72.0914 10 50 10Z" fill="#FF8C69"/>
-        <path d="M35 40C35 42.7614 32.7614 45 30 45C27.2386 45 25 42.7614 25 40C25 37.2386 27.2386 35 30 35C32.7614 35 35 37.2386 35 40Z" fill="#3E322C"/>
-        <path d="M75 40C75 42.7614 72.7614 45 70 45C67.2386 45 65 42.7614 65 40C65 37.2386 67.2386 35 70 35C72.7614 35 75 37.2386 75 40Z" fill="#3E322C"/>
-        <path d="M35 65C35 65 40 70 50 70C60 70 65 65 65 65" stroke="#3E322C" stroke-width="5" stroke-linecap="round"/>
-        <path d="M50 5C50 5 55 15 50 20" stroke="#4CAF50" stroke-width="6" stroke-linecap="round"/>
-    </svg>
+<svg width="60" height="60" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M50 10C27.9086 10 10 27.9086 10 50C10 72.0914 27.9086 90 50 90C72.0914 90 90 72.0914 90 50C90 27.9086 72.0914 10 50 10Z" fill="#FF8C69"/>
+    <path d="M35 40C35 42.7614 32.7614 45 30 45C27.2386 45 25 42.7614 25 40C25 37.2386 27.2386 35 30 35C32.7614 35 35 37.2386 35 40Z" fill="#3E322C"/>
+    <path d="M75 40C75 42.7614 72.7614 45 70 45C67.2386 45 65 42.7614 65 40C65 37.2386 67.2386 35 70 35C72.7614 35 75 37.2386 75 40Z" fill="#3E322C"/>
+    <path d="M35 65C35 65 40 70 50 70C60 70 65 65 65 65" stroke="#3E322C" stroke-width="5" stroke-linecap="round"/>
+    <path d="M50 5C50 5 55 15 50 20" stroke="#4CAF50" stroke-width="6" stroke-linecap="round"/>
+</svg>
     """
 
 def get_down_arrow():
