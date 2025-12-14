@@ -212,38 +212,14 @@ def get_down_arrow():
     </svg>
     """
 
-# --- HELPER: BARCODE ---
-def fetch_barcode_data(barcode):
-    if not barcode or len(barcode) < 5: return None
-    try:
-        url = f"https://world.openfoodfacts.org/api/v0/product/{barcode}.json"
-        response = requests.get(url, timeout=3)
-        data = response.json()
-        if data.get('status') == 1:
-            p = data['product']
-            raw_qty = p.get('quantity', '')
-            weight_val = 0.0
-            unit_val = 'count'
-            if raw_qty:
-                match = re.match(r"([0-9.]+)\s*([a-zA-Z]+)", raw_qty)
-                if match:
-                    try:
-                        weight_val = float(match.group(1))
-                        unit_val = match.group(2).lower()
-                    except: pass
-            return {
-                "item_name": p.get('product_name', ''),
-                "notes": p.get('brands', ''),
-                "weight": weight_val,
-                "weight_unit": unit_val
-            }
-    except: return None
-    return None
-
 # --- MAIN LOGIC ---
 def main():
     local_css()
+    # Initialize Safe Session State for ALL variables
     if 'user_info' not in st.session_state: st.session_state.user_info = None
+    if 'imgs' not in st.session_state: st.session_state.imgs = {'f':None, 'b':None, 'd':None}
+    if 'active' not in st.session_state: st.session_state.active = None
+    if 'data' not in st.session_state: st.session_state.data = None
     
     if not st.session_state.user_info:
         login_screen()
@@ -251,17 +227,17 @@ def main():
         app_interface()
 
 def login_screen():
-    # --- HERO SECTION ---
+    # --- HERO SECTION (Fix: Removing indentation to prevent code block rendering) ---
     st.markdown(f"""
-        <div class="landing-hero">
-            {get_bean_logo()}
-            <div class="hero-title">Kitchen Mind</div>
-            <div class="hero-subtitle">Mindful inventory for a happy home.</div>
-            <div class="scroll-indicator bounce-arrow">
-                {get_down_arrow()}
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
+<div class="landing-hero">
+{get_bean_logo()}
+<div class="hero-title">Kitchen Mind</div>
+<div class="hero-subtitle">Mindful inventory for a happy home.</div>
+<div class="scroll-indicator bounce-arrow">
+{get_down_arrow()}
+</div>
+</div>
+""", unsafe_allow_html=True)
     
     # --- LOGIN FORM (BELOW FOLD) ---
     c1, c2, c3 = st.columns([1, 1.5, 1])
@@ -275,13 +251,16 @@ def login_screen():
                 password = st.text_input("Password", type="password")
                 st.write("")
                 if st.form_submit_button("Start Cooking", use_container_width=True):
-                    # Real Firebase Auth Logic
-                    users = db.collection('users').where('email', '==', email.strip().lower()).where('password', '==', password).stream()
-                    user = next(users, None)
-                    if user:
-                        st.session_state.user_info = user.to_dict()
-                        st.rerun()
-                    else: st.error("We couldn't find that account.")
+                    try:
+                        # Real Firebase Auth Logic
+                        users = db.collection('users').where('email', '==', email.strip().lower()).where('password', '==', password).stream()
+                        user = next(users, None)
+                        if user:
+                            st.session_state.user_info = user.to_dict()
+                            st.rerun()
+                        else: st.error("We couldn't find that account.")
+                    except Exception as e:
+                        st.error(f"Login Error: {e}")
         
         with tab2:
             with st.form("signup_form"):
@@ -291,12 +270,15 @@ def login_screen():
                 st.write("")
                 if st.form_submit_button("Create Account", use_container_width=True):
                     if new_email and new_pass:
-                        uid = str(uuid.uuid4())[:6].upper()
-                        db.collection('users').add({
-                            "email": new_email.lower(), "password": new_pass, "household_id": uid
-                        })
-                        db.collection('households').document(uid).set({"name": hh, "id": uid})
-                        st.success(f"Welcome! Your ID is {uid}")
+                        try:
+                            uid = str(uuid.uuid4())[:6].upper()
+                            db.collection('users').add({
+                                "email": new_email.lower(), "password": new_pass, "household_id": uid
+                            })
+                            db.collection('households').document(uid).set({"name": hh, "id": uid})
+                            st.success(f"Welcome! Your ID is {uid}")
+                        except Exception as e:
+                            st.error(f"Signup Error: {e}")
 
 def app_interface():
     # --- SIDEBAR (Minimal) ---
@@ -309,12 +291,14 @@ def app_interface():
 
     # --- TOP NAVIGATION (Friendly Tabs) ---
     t1, t2, t3, t4 = st.tabs(["🏠 Home", "📸 Scanner", "📦 Pantry", "🛒 List"])
-    hh_id = st.session_state.user_info['household_id']
-
-    with t1: page_home(hh_id)
-    with t2: page_scanner(hh_id)
-    with t3: page_pantry(hh_id)
-    with t4: page_list(hh_id)
+    
+    # Ensure household ID exists safely
+    if st.session_state.user_info:
+        hh_id = st.session_state.user_info.get('household_id', 'DEMO')
+        with t1: page_home(hh_id)
+        with t2: page_scanner(hh_id)
+        with t3: page_pantry(hh_id)
+        with t4: page_list(hh_id)
 
 # --- 1. HOME ---
 def page_home(hh_id):
@@ -348,21 +332,20 @@ def manual_add_dialog(hh_id):
         cat = st.selectbox("Category", ["Produce", "Dairy", "Pantry", "Snacks", "Frozen"])
         qty = st.number_input("How many?", 1.0)
         if st.form_submit_button("Add to Pantry"):
-            db.collection('inventory').add({
-                "item_name": name, "category": cat, "quantity": qty, "household_id": hh_id,
-                "added_at": firestore.SERVER_TIMESTAMP, "initial_quantity": qty
-            })
-            st.rerun()
+            try:
+                db.collection('inventory').add({
+                    "item_name": name, "category": cat, "quantity": qty, "household_id": hh_id,
+                    "added_at": firestore.SERVER_TIMESTAMP, "initial_quantity": qty
+                })
+                st.rerun()
+            except Exception as e:
+                st.error("Could not add item.")
 
 # --- 2. SCANNER ---
 def page_scanner(hh_id):
     st.markdown("## 📸 Kitchen Mind Pro")
     st.info("Snap photos of your groceries. We'll handle the rest.")
     
-    if 'imgs' not in st.session_state: st.session_state.imgs = {'f':None, 'b':None, 'd':None}
-    if 'active' not in st.session_state: st.session_state.active = None
-    if 'data' not in st.session_state: st.session_state.data = None
-
     def cam_block(label, key):
         with st.container(border=True):
             st.markdown(f"**{label}**")
@@ -396,7 +379,7 @@ def page_scanner(hh_id):
                     res = client.models.generate_content(model="gemini-flash-latest", contents=[prompt]+valid)
                     clean = res.text.replace("```json","").replace("```","").strip()
                     st.session_state.data = json.loads(clean)
-                except: st.error("Could not read image.")
+                except: st.error("Could not read image. Try again.")
 
     if st.session_state.data:
         df = st.data_editor(st.session_state.data, num_rows="dynamic", use_container_width=True)
@@ -415,8 +398,12 @@ def page_scanner(hh_id):
 # --- 3. PANTRY ---
 def page_pantry(hh_id):
     st.markdown("## 📦 My Pantry")
-    items = list(db.collection('inventory').where('household_id','==',hh_id).stream())
-    data = [{'id': i.id, **i.to_dict()} for i in items]
+    
+    try:
+        items = list(db.collection('inventory').where('household_id','==',hh_id).stream())
+        data = [{'id': i.id, **i.to_dict()} for i in items]
+    except:
+        data = []
     
     if not data:
         st.info("Your pantry is empty. Time to go shopping!")
@@ -458,8 +445,11 @@ def page_list(hh_id):
             db.collection('shopping_list').add({"item_name": txt, "household_id": hh_id, "status": "Pending"})
             st.rerun()
             
-    items = list(db.collection('shopping_list').where('household_id','==',hh_id).where('status','==','Pending').stream())
-    data = [{'id': i.id, **i.to_dict()} for i in items]
+    try:
+        items = list(db.collection('shopping_list').where('household_id','==',hh_id).where('status','==','Pending').stream())
+        data = [{'id': i.id, **i.to_dict()} for i in items]
+    except:
+        data = []
     
     if not data: st.success("All caught up!"); return
     
