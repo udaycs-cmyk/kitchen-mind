@@ -43,7 +43,8 @@ def local_css():
             color: var(--text-brown);
         }
         
-        /* Typography Overrides (Removed 'span' and 'div' to fix icons) */
+        /* TARGETED Typography Overrides */
+        /* We DO NOT target 'div' or 'span' generically to avoid breaking Icons */
         h1, h2, h3, h4, h5, h6, p, label, .stButton button, .stTextInput input {
             font-family: 'Fredoka', sans-serif !important;
             color: var(--text-brown) !important;
@@ -208,7 +209,7 @@ def get_down_arrow():
 </svg>
     """
 
-# --- HELPER: BARCODE (Restored Logic) ---
+# --- HELPER: BARCODE ---
 def fetch_barcode_data(barcode):
     if not barcode or len(barcode) < 5: return None
     try:
@@ -239,7 +240,6 @@ def fetch_barcode_data(barcode):
 # --- MAIN LOGIC ---
 def main():
     local_css()
-    # Initialize Safe Session State for ALL variables
     if 'user_info' not in st.session_state: st.session_state.user_info = None
     if 'imgs' not in st.session_state: st.session_state.imgs = {'f':None, 'b':None, 'd':None}
     if 'active' not in st.session_state: st.session_state.active = None
@@ -315,7 +315,6 @@ def app_interface():
     # --- TOP NAVIGATION ---
     t1, t2, t3, t4 = st.tabs(["🏠 Home", "📸 Scanner", "📦 Pantry", "🛒 List"])
     
-    # Ensure household ID exists safely
     if st.session_state.user_info:
         hh_id = st.session_state.user_info.get('household_id', 'DEMO')
         with t1: page_home(hh_id)
@@ -350,7 +349,6 @@ def page_home(hh_id):
 
 @st.dialog("Add Item")
 def manual_add_dialog(hh_id):
-    # RESTORED FULL FORM LOGIC FROM OLD CODE
     with st.form("manual_add"):
         c1, c2 = st.columns([2,1])
         name = c1.text_input("Item Name")
@@ -358,20 +356,22 @@ def manual_add_dialog(hh_id):
         
         st.markdown("##### Details")
         c3, c4, c5 = st.columns(3)
-        qty = c3.number_input("Count", 1.0, step=0.5)
-        weight = c4.number_input("Weight", 0.0, step=0.5)
-        w_unit = c5.selectbox("Unit", ["count", "oz", "lbs", "g", "kg", "ml", "L", "gal"])
+        # PRO LOGIC: Added Initial Quantity back
+        qty = c3.number_input("Current Count", 1.0, step=0.5)
+        init_qty = c4.number_input("Full Size", 1.0, step=0.5, value=qty, help="How much is in a full container?")
+        weight = c5.number_input("Weight", 0.0, step=0.5)
         
         c6, c7, c8 = st.columns(3)
-        threshold = c6.number_input("Alert Limit", 1.0)
-        expiry = c7.date_input("Expiry", datetime.date.today() + datetime.timedelta(days=7))
+        w_unit = c6.selectbox("Unit", ["count", "oz", "lbs", "g", "kg", "ml", "L", "gal"])
+        threshold = c7.number_input("Alert Limit", 1.0)
+        expiry = c8.date_input("Expiry", datetime.date.today() + datetime.timedelta(days=7))
         store = c8.selectbox("Store", ["General", "Costco", "Whole Foods", "Trader Joe's"])
         
         if st.form_submit_button("Add to Pantry"):
             try:
                 db.collection('inventory').add({
                     "item_name": name, "category": category,
-                    "quantity": float(qty), "initial_quantity": float(qty),
+                    "quantity": float(qty), "initial_quantity": float(init_qty),
                     "weight": float(weight), "weight_unit": w_unit,
                     "threshold": float(threshold), "estimated_expiry": str(expiry),
                     "suggested_store": store, "household_id": hh_id,
@@ -424,7 +424,7 @@ def page_scanner(hh_id):
                     clean = res.text.replace("```json","").replace("```","").strip()
                     ai_data = json.loads(clean)
                     
-                    # RESTORED: Barcode Logic integration
+                    # PRO LOGIC: Barcode Integration
                     for item in ai_data:
                         bc = item.get('barcode', '')
                         if bc:
@@ -450,7 +450,7 @@ def page_scanner(hh_id):
             time.sleep(1)
             st.rerun()
 
-# --- 3. PANTRY (Restored Logic + Joyful UI) ---
+# --- 3. PANTRY (Pro Logic + Joyful UI) ---
 def page_pantry(hh_id):
     st.markdown("## 📦 My Pantry")
     
@@ -458,7 +458,7 @@ def page_pantry(hh_id):
         items = list(db.collection('inventory').where('household_id','==',hh_id).stream())
         data = [{'id': i.id, **i.to_dict()} for i in items]
         
-        # RESTORED: Auto-shopping list logic
+        # PRO LOGIC: Fetch shopping list to prevent duplicates
         shop_docs = db.collection('shopping_list').where('household_id', '==', hh_id).where('status', '==', 'Pending').stream()
         shopping_list_names = {d.to_dict()['item_name'].lower() for d in shop_docs}
     except:
@@ -472,9 +472,9 @@ def page_pantry(hh_id):
     today = datetime.date.today()
 
     for item in data:
-        # RESTORED: Calculation Logic
         current_qty = float(item.get('quantity', 1))
         initial_qty = float(item.get('initial_quantity', current_qty))
+        if initial_qty == 0: initial_qty = 1.0 # Prevent division by zero
         thresh = float(item.get('threshold', 1))
         
         try: exp = datetime.datetime.strptime(item.get('estimated_expiry', ''), "%Y-%m-%d").date()
@@ -482,7 +482,7 @@ def page_pantry(hh_id):
         
         days_left = (exp - today).days
         
-        # Auto-Add Logic
+        # PRO LOGIC: Auto-Refill
         if current_qty < thresh and item['item_name'].lower() not in shopping_list_names:
              db.collection('shopping_list').add({
                 "item_name": item['item_name'], "household_id": hh_id,
@@ -492,20 +492,17 @@ def page_pantry(hh_id):
              st.toast(f"🚨 Added {item['item_name']} to list")
              shopping_list_names.add(item['item_name'].lower())
 
-        # Badge Logic
         if days_left < 0: badge = "🔴 Expired"
         elif days_left < 7: badge = f"🟠 {days_left}d"
         else: badge = "🟢 Good"
 
-        # JOYFUL CARD UI
         with st.container(border=True):
             c1, c2 = st.columns([4, 1])
             with c1:
                 st.markdown(f"### {item.get('item_name','Unknown')}")
                 st.caption(f"{badge} • {item.get('category','General')} • {item.get('weight', '')} {item.get('weight_unit','')}")
                 
-                # Visual Bar
-                prog = min(current_qty/initial_qty, 1.0) if initial_qty > 0 else 0
+                prog = min(current_qty/initial_qty, 1.0)
                 st.progress(prog)
                 
             with c2:
@@ -513,23 +510,26 @@ def page_pantry(hh_id):
                 st.markdown(f"**{current_qty} left**")
             
             with st.expander("Update"):
-                # RESTORED: Full Edit Fields
-                ec1, ec2 = st.columns(2)
+                ec1, ec2, ec3 = st.columns(3)
                 nq = ec1.number_input("Count", 0.0, value=current_qty, key=f"q_{item['id']}")
-                n_thr = ec2.number_input("Alert Limit", 0.0, value=thresh, key=f"t_{item['id']}")
+                # PRO LOGIC: Editable Initial Quantity
+                ni = ec2.number_input("Full Size", 0.0, value=initial_qty, key=f"iq_{item['id']}")
+                n_thr = ec3.number_input("Alert Limit", 0.0, value=thresh, key=f"t_{item['id']}")
                 
-                if nq != current_qty:
-                    db.collection('inventory').document(item['id']).update({'quantity': nq})
-                    st.rerun()
-                if n_thr != thresh:
-                    db.collection('inventory').document(item['id']).update({'threshold': n_thr})
+                updates = {}
+                if nq != current_qty: updates['quantity'] = nq
+                if ni != initial_qty: updates['initial_quantity'] = ni
+                if n_thr != thresh: updates['threshold'] = n_thr
+                
+                if updates:
+                    db.collection('inventory').document(item['id']).update(updates)
                     st.rerun()
                     
                 if st.button("Remove", key=f"del_{item['id']}"):
                     db.collection('inventory').document(item['id']).delete()
                     st.rerun()
 
-# --- 4. LIST (Restored Logic) ---
+# --- 4. LIST ---
 def page_list(hh_id):
     st.markdown("## 🛒 Shopping List")
     with st.form("add_list"):
@@ -546,7 +546,7 @@ def page_list(hh_id):
     
     if not data: st.success("All caught up!"); return
     
-    # RESTORED: Group by Store
+    # PRO LOGIC: Group by Store
     stores = list(set([d.get('store','General') for d in data]))
     
     for s in stores:
