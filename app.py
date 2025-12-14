@@ -32,14 +32,14 @@ def local_css():
             --bg-oatmeal: #FDF5EB;
             --text-brown: #4A3B32;
             --accent-coral: #FF8C69;
+            --accent-mint: #A0E8AF;
             --card-white: #FFFFFF;
-            /* Headspace-inspired Palette */
+            /* Headspace Palette */
             --hs-orange: #FF9C59;
             --hs-blue: #596DFF;
             --hs-yellow: #FFD54F;
             --hs-green: #4CAF50;
             --hs-purple: #9C27B0;
-            --hs-mint: #A0E8AF;
         }
 
         /* --- BASE STYLES --- */
@@ -48,18 +48,33 @@ def local_css():
             color: var(--text-brown);
         }
         
-        /* Typography */
+        /* Typography Override */
         h1, h2, h3, h4, h5, h6, p, label, .stButton button, .stTextInput input {
             font-family: 'Fredoka', sans-serif !important;
             color: var(--text-brown) !important;
         }
         
-        /* Mobile-First Headings */
-        h3 { font-size: 1.3rem !important; font-weight: 600 !important; }
-        p, .caption { font-size: 0.95rem !important; }
+        /* --- HERO SECTION --- */
+        .landing-hero {
+            height: 95vh; /* Full viewport height */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            background: radial-gradient(circle at 50% 50%, #FFF 0%, #FDF5EB 70%);
+        }
+        .bounce-arrow {
+            animation: bounce 2s infinite;
+            margin-top: 40px;
+        }
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% {transform: translateY(0);}
+            40% {transform: translateY(-15px);}
+            60% {transform: translateY(-7px);}
+        }
 
         /* --- PANTRY CARD GRID --- */
-        /* We create a class for the colorful cards */
         .pantry-card {
             border-radius: 24px;
             padding: 20px;
@@ -74,12 +89,12 @@ def local_css():
         }
         .pantry-card:hover { transform: translateY(-3px); }
         
-        /* Color Classes for Cards */
-        .card-bg-0 { background-color: #FFF3E0; border: 2px solid #FFE0B2; } /* Peach */
-        .card-bg-1 { background-color: #E3F2FD; border: 2px solid #BBDEFB; } /* Blue */
-        .card-bg-2 { background-color: #F1F8E9; border: 2px solid #DCEDC8; } /* Green */
-        .card-bg-3 { background-color: #F3E5F5; border: 2px solid #E1BEE7; } /* Purple */
-        .card-bg-4 { background-color: #FFFDE7; border: 2px solid #FFF9C4; } /* Yellow */
+        /* Card Colors */
+        .card-bg-0 { background-color: #FFF3E0; border: 2px solid #FFE0B2; } 
+        .card-bg-1 { background-color: #E3F2FD; border: 2px solid #BBDEFB; } 
+        .card-bg-2 { background-color: #F1F8E9; border: 2px solid #DCEDC8; } 
+        .card-bg-3 { background-color: #F3E5F5; border: 2px solid #E1BEE7; } 
+        .card-bg-4 { background-color: #FFFDE7; border: 2px solid #FFF9C4; } 
 
         /* --- SOFT INPUTS --- */
         div[data-baseweb="input"] {
@@ -122,9 +137,7 @@ def local_css():
         /* Hide Cruft */
         [data-testid="stSidebar"] { display: none; }
         header, footer { visibility: hidden; }
-        
-        /* Remove default container padding to look more like an app */
-        .block-container { padding-top: 2rem; padding-bottom: 5rem; }
+        .block-container { padding-top: 1rem; padding-bottom: 5rem; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -148,7 +161,7 @@ db = firestore.client()
 
 # --- ASSETS ---
 def get_bean_logo():
-    return """<svg width="60" height="60" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M50 10C27.9 10 10 27.9 10 50S27.9 90 50 90 90 72.1 90 50 72.1 10 50 10z" fill="#FF8C69"/><path d="M35 40c0 2.8-2.2 5-5 5s-5-2.2-5-5 2.2-5 5-5 5 2.2 5 5zM75 40c0 2.8-2.2 5-5 5s-5-2.2-5-5 2.2-5 5-5 5 2.2 5 5z" fill="#3E322C"/><path d="M35 65s5 5 15 5 15-5 15-5" stroke="#3E322C" stroke-width="5" stroke-linecap="round"/><path d="M50 5s5 10 0 15" stroke="#4CAF50" stroke-width="6" stroke-linecap="round"/></svg>"""
+    return """<svg width="80" height="80" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M50 10C27.9 10 10 27.9 10 50S27.9 90 50 90 90 72.1 90 50 72.1 10 50 10z" fill="#FF8C69"/><path d="M35 40c0 2.8-2.2 5-5 5s-5-2.2-5-5 2.2-5 5-5 5 2.2 5 5zM75 40c0 2.8-2.2 5-5 5s-5-2.2-5-5 2.2-5 5-5 5 2.2 5 5z" fill="#3E322C"/><path d="M35 65s5 5 15 5 15-5 15-5" stroke="#3E322C" stroke-width="5" stroke-linecap="round"/><path d="M50 5s5 10 0 15" stroke="#4CAF50" stroke-width="6" stroke-linecap="round"/></svg>"""
 
 def get_down_arrow():
     return """<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#FF8C69" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>"""
@@ -156,8 +169,10 @@ def get_down_arrow():
 # --- MAIN ---
 def main():
     local_css()
+    # Init Session State
     if 'user_info' not in st.session_state: st.session_state.user_info = None
     if 'imgs' not in st.session_state: st.session_state.imgs = {'f':None,'b':None,'d':None}
+    if 'active' not in st.session_state: st.session_state.active = None
     if 'data' not in st.session_state: st.session_state.data = None
     
     if not st.session_state.user_info:
@@ -166,10 +181,23 @@ def main():
         app_interface()
 
 def login_screen():
-    # Login Logic (Same as before)
-    st.markdown(f"""<div style="height:80vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;">{get_bean_logo()}<h1 style="margin:10px 0;">Kitchen Mind</h1><p style="color:#8D7B72;font-size:1.2rem;">Mindful inventory.</p></div>""", unsafe_allow_html=True)
+    # RESTORED: Full Screen Hero with Scroll Indicator
+    # Note: Indentation removed from HTML string to prevent "Code Block" error
+    st.markdown(f"""
+<div class="landing-hero">
+{get_bean_logo()}
+<h1 style="font-size: 3.5rem; margin: 10px 0;">Kitchen Mind</h1>
+<p style="color:#8D7B72; font-size:1.5rem;">Mindful inventory for a happy home.</p>
+<div class="bounce-arrow">{get_down_arrow()}</div>
+<p style="font-size: 0.8rem; opacity: 0.5;">SCROLL TO START</p>
+</div>
+""", unsafe_allow_html=True)
+    
+    st.divider() # Visual break for the scroll
+    
     c1,c2,c3=st.columns([1,2,1])
     with c2:
+        st.markdown("<h3 style='text-align:center;'>Welcome In</h3>", unsafe_allow_html=True)
         with st.form("log"):
             email=st.text_input("Email")
             pw=st.text_input("Password",type="password")
@@ -182,7 +210,7 @@ def login_screen():
                 except: st.error("Login error.")
 
 def app_interface():
-    # Top Tabs acting as bottom nav style
+    # Top Tabs acting as main navigation
     t1, t2, t3, t4 = st.tabs(["🏠 Home", "📸 Scan", "📦 Pantry", "🛒 List"])
     hh_id = st.session_state.user_info.get('household_id','DEMO')
     
@@ -193,10 +221,10 @@ def app_interface():
 
 def page_home(hh_id):
     st.markdown("## Good Morning!")
-    st.write("What would you like to do?")
+    st.write("What would you like to do today?")
     c1,c2 = st.columns(2)
     with c1: 
-        if st.button("📸 Scan Item", use_container_width=True): st.info("Use Scan tab!")
+        if st.button("📸 Scan New Items", use_container_width=True): st.info("Tap the 'Scan' tab above!")
     with c2:
         if st.button("📝 Add Manually", use_container_width=True): manual_add_dialog(hh_id)
 
@@ -206,8 +234,8 @@ def manual_add_dialog(hh_id):
         name=st.text_input("Item Name")
         cat=st.selectbox("Category",["Produce","Dairy","Meat","Pantry","Frozen","Snacks"])
         c1,c2=st.columns(2)
-        qty=c1.number_input("Current",1.0,step=0.5)
-        iq=c2.number_input("Full Size",1.0,step=0.5)
+        qty=c1.number_input("Current Count",1.0,step=0.5)
+        iq=c2.number_input("Initial Qty",1.0,step=0.5, help="Full size capacity")
         store=st.selectbox("Store",["General","Costco","Whole Foods"])
         if st.form_submit_button("Save"):
             db.collection('inventory').add({
@@ -217,31 +245,56 @@ def manual_add_dialog(hh_id):
             st.rerun()
 
 def page_scanner(hh_id):
-    st.markdown("## 📸 Scan")
-    c1,c2=st.columns(2)
-    with c1:
-        if st.button("Front Photo"): st.session_state.active='f'; st.rerun()
-    if st.session_state.get('active')=='f':
-        p=st.camera_input("Snap")
-        if p: st.session_state.imgs['f']=Image.open(p); st.session_state.active=None; st.rerun()
+    st.markdown("## 📸 Kitchen Mind")
+    st.info("Capture 3 angles for best results. We'll read the labels.")
     
-    if st.session_state.imgs['f']:
-        st.image(st.session_state.imgs['f'], width=150)
-        if st.button("Analyze"):
-            # Mock Analysis for speed in this demo version
-            st.session_state.data = [{"item_name":"Scanned Item","quantity":1,"category":"Pantry"}]
-            st.rerun()
+    # RESTORED: 3-Column Camera Layout
+    c1, c2, c3 = st.columns(3)
+    
+    # Helper to draw camera blocks
+    def render_cam(col, key, label):
+        with col:
+            # Using the 'pantry-card' style for consistency
+            st.markdown(f"<div class='pantry-card card-bg-1' style='height: auto; min-height: 150px;'><strong>{label}</strong></div>", unsafe_allow_html=True)
+            
+            if st.session_state.imgs[key]:
+                st.image(st.session_state.imgs[key], use_container_width=True)
+                if st.button("Clear", key=f"del_{key}"): 
+                    st.session_state.imgs[key]=None; st.rerun()
+            elif st.session_state.active == key:
+                p = st.camera_input("Snap", key=f"cam_{key}", label_visibility="collapsed")
+                if p: 
+                    st.session_state.imgs[key] = Image.open(p)
+                    st.session_state.active = None
+                    st.rerun()
+            else:
+                if st.button("Tap to Snap", key=f"btn_{key}", use_container_width=True):
+                    st.session_state.active = key
+                    st.rerun()
+
+    render_cam(c1, 'f', "1. Front")
+    render_cam(c2, 'b', "2. Back")
+    render_cam(c3, 'd', "3. Expiry")
+
+    # Analyze Logic
+    valid = [i for i in st.session_state.imgs.values() if i]
+    if valid:
+        st.divider()
+        if st.button("✨ Analyze Photos", type="primary", use_container_width=True):
+            with st.spinner("Reading..."):
+                # Mock analysis for speed (Replace with real Gemini call from your previous code if needed)
+                st.session_state.data = [{"item_name":"Scanned Product", "quantity":1.0, "category":"Pantry"}]
+                st.rerun()
 
     if st.session_state.data:
         df = st.data_editor(st.session_state.data, num_rows="dynamic")
-        if st.button("Save"):
+        if st.button("Save to Pantry"):
             batch=db.batch()
             for i in df:
                 ref=db.collection('inventory').document()
                 batch.set(ref,{**i,"household_id":hh_id,"initial_quantity":i.get('quantity',1)})
             batch.commit(); st.session_state.data=None; st.rerun()
 
-# --- 3. PANTRY (REDESIGNED: HEADSPACE CARDS) ---
 def page_pantry(hh_id):
     st.markdown("## 📦 My Pantry")
     
@@ -252,12 +305,10 @@ def page_pantry(hh_id):
     
     if not data: st.info("Pantry is empty."); return
 
-    # CSS Grid Logic using Streamlit Columns
-    # We want 2 columns on mobile/desktop to mimic the Headspace grid
+    # RESTORED: Colorful Grid Layout
     cols = st.columns(2) 
     
     for idx, item in enumerate(data):
-        # Cycle through 5 pastel colors based on index
         color_class = f"card-bg-{idx % 5}"
         
         with cols[idx % 2]:
@@ -276,15 +327,15 @@ def page_pantry(hh_id):
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # Progress & Edit (Outside the HTML div so Streamlit widgets work)
+                # Logic Controls
                 curr = float(item.get('quantity', 0))
                 init = float(item.get('initial_quantity', curr)) or 1.0
                 st.progress(min(curr/init, 1.0))
                 
-                # Expandable Edit Menu (Keeps card clean)
+                # Expandable Edit Menu
                 with st.expander(f"Edit ({curr})"):
                     nc = st.number_input("Count", 0.0, value=curr, key=f"q_{item['id']}")
-                    ni = st.number_input("Full Size", 0.0, value=init, key=f"i_{item['id']}")
+                    ni = st.number_input("Initial Qty", 0.0, value=init, key=f"i_{item['id']}")
                     
                     if nc != curr or ni != init:
                         db.collection('inventory').document(item['id']).update({'quantity':nc, 'initial_quantity':ni})
