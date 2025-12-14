@@ -325,7 +325,12 @@ def page_pantry(hh_id):
     try:
         items = list(db.collection('inventory').where('household_id','==',hh_id).stream())
         data = [{'id': i.id, **i.to_dict()} for i in items]
-    except: data = []
+        
+        shop_docs = db.collection('shopping_list').where('household_id', '==', hh_id).where('status', '==', 'Pending').stream()
+        shopping_list_names = {d.to_dict()['item_name'].lower() for d in shop_docs}
+    except:
+        data = []
+        shopping_list_names = set()
     
     if not data: st.info("Pantry is empty."); return
 
@@ -343,6 +348,23 @@ def page_pantry(hh_id):
         if days_left < 0: badge = "🔴 Expired"
         elif days_left < 7: badge = f"🟠 {days_left}d left"
         else: badge = f"🟢 {days_left}d left"
+
+        # LOGIC: Auto-Add to Shopping List based on Threshold (Alert Limit)
+        curr = float(item.get('quantity', 0))
+        thresh = float(item.get('threshold', 1))
+        
+        if curr < thresh and item['item_name'].lower() not in shopping_list_names:
+             # SMART CALCULATION: How many do we need to reach the threshold?
+             calc_needed = max(1.0, thresh - curr)
+             
+             db.collection('shopping_list').add({
+                "item_name": item['item_name'], "household_id": hh_id,
+                "store": item.get('suggested_store', 'General'), 
+                "qty_needed": calc_needed, # <--- CALCULATED
+                "status": "Pending", "reason": "Auto-Refill"
+            })
+             st.toast(f"🚨 Added {item['item_name']} (Buy {calc_needed})")
+             shopping_list_names.add(item['item_name'].lower())
 
         icon = get_smart_icon(item.get('item_name', ''), item.get('category', 'General'))
         
@@ -362,7 +384,6 @@ def page_pantry(hh_id):
                 </div>
                 """, unsafe_allow_html=True)
                 
-                curr = float(item.get('quantity', 0))
                 init = float(item.get('initial_quantity', curr)) or 1.0
                 st.progress(min(curr/init, 1.0))
                 
@@ -388,20 +409,58 @@ def page_pantry(hh_id):
                         st.rerun()
 
 def page_list(hh_id):
-    st.markdown("## 🛒 List")
-    with st.form("ql"):
-        c1,c2=st.columns([3,1])
-        txt=c1.text_input("Item")
-        if c2.form_submit_button("Add") and txt:
-            db.collection('shopping_list').add({"item_name":txt,"household_id":hh_id,"status":"Pending"})
-            st.rerun()
+    st.markdown("## 🛒 Shopping List")
+    
+    # 1. Manual Add with Quantity
+    with st.container(border=True):
+        with st.form("ql"):
+            c1, c2, c3 = st.columns([3, 1, 1])
+            txt = c1.text_input("Item Name")
+            qty = c2.number_input("Qty", 1.0, step=1.0)
+            if c3.form_submit_button("Add", use_container_width=True) and txt:
+                db.collection('shopping_list').add({
+                    "item_name": txt, 
+                    "household_id": hh_id, 
+                    "qty_needed": qty, # <--- SAVES YOUR INPUT
+                    "status": "Pending",
+                    "store": "General"
+                })
+                st.rerun()
             
     items = list(db.collection('shopping_list').where('household_id','==',hh_id).where('status','==','Pending').stream())
-    for i in [{'id':x.id,**x.to_dict()} for x in items]:
-        c1,c2=st.columns([1,5])
-        if c1.button("✓", key=i['id']):
-            db.collection('shopping_list').document(i['id']).update({'status':'Bought'}); st.rerun()
-        c2.write(i['item_name'])
+    
+    if not items: 
+        st.info("Your list is empty! Great job.")
+        return
+    
+    # Sort data for display
+    data = [{'id': x.id, **x.to_dict()} for x in items]
+    
+    # Group by Store (Pro Logic)
+    stores = list(set([d.get('store', 'General') for d in data]))
+    
+    for s in stores:
+        st.markdown(f"### 📍 {s}")
+        store_items = [d for d in data if d.get('store') == s]
+        
+        for i in store_items:
+            # Joyful List Card
+            with st.container(border=True):
+                c1, c2 = st.columns([1, 5])
+                if c1.button("✓", key=i['id'], use_container_width=True):
+                    db.collection('shopping_list').document(i['id']).update({'status': 'Bought'})
+                    st.rerun()
+                
+                # Smart Icon
+                icon = get_smart_icon(i['item_name'], "General")
+                
+                # Show Name and Quantity Needed
+                qty_show = float(i.get('qty_needed', 1))
+                # Format: remove decimals if whole number (e.g. 2.0 -> 2)
+                q_str = f"{int(qty_show)}" if qty_show.is_integer() else f"{qty_show}"
+                
+                c2.markdown(f"<div style='font-size:1.1rem;'>{icon} <strong>{i['item_name']}</strong></div>", unsafe_allow_html=True)
+                c2.caption(f"Buy: {q_str}")
 
 if __name__ == "__main__":
     main()
