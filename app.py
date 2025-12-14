@@ -105,9 +105,9 @@ def local_css():
             margin-left: 5px;
         }
         
-        /* 8. LANDING HERO SECTION (New) */
+        /* 8. LANDING HERO SECTION */
         .landing-hero {
-            height: 90vh; /* Takes up almost full screen height */
+            height: 90vh;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -118,8 +118,7 @@ def local_css():
         
         .scroll-indicator {
             margin-top: 50px;
-            font-size: 24px;
-            color: #D4AF37;
+            /* Removed generic font size/color here, handled in the SVG/span directly */
             animation: bounce 2s infinite;
         }
         
@@ -240,14 +239,18 @@ def sidebar_info():
             st.rerun()
 
 def login_signup_screen():
-    # --- 1. FULL SCREEN LANDING HERO ---
-    # This div takes up 90vh height, pushing the login form "below the fold"
+    # --- 1. FULL SCREEN LANDING HERO (UPDATED WITH GOLD SVG ARROW) ---
+    # Replaced the blue emoji ⬇️ with a custom SVG colored #D4AF37
     st.markdown("""
         <div class="landing-hero">
             <h1 style="font-size: 4rem; margin-bottom: 0;">KITCHEN MIND PRO</h1>
             <p style="font-size: 1.2rem; opacity: 0.8; letter-spacing: 2px;">LUXURY HOME INVENTORY</p>
             <div class="scroll-indicator">
-                ⬇️<br><span style="font-size: 12px; opacity: 0.6;">SCROLL TO LOGIN</span>
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 4V20M12 20L18 14M12 20L6 14" stroke="#D4AF37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <br>
+                <span style="font-size: 12px; opacity: 0.6; color: #D4AF37;">SCROLL TO LOGIN</span>
             </div>
         </div>
         <hr style="border: 0; border-top: 1px solid #333; margin-bottom: 50px;">
