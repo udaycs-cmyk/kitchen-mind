@@ -10,6 +10,7 @@ import time
 import requests
 import re
 import math
+import io
 
 # --- 1. CONFIGURATION & SETUP ---
 st.set_page_config(
@@ -64,21 +65,32 @@ def local_css():
             caret-color: #D4AF37 !important;
         }
         
-        /* 4. BUTTONS */
-        div.stButton > button {
-            background-image: linear-gradient(135deg, #D4AF37 0%, #B4941F 100%);
+        /* 4. BUTTONS (Updated to target Primary Buttons specifically) */
+        div.stButton > button, button[kind="primary"] {
+            background-image: linear-gradient(135deg, #D4AF37 0%, #B4941F 100%) !important;
             color: #000000 !important;
             border-radius: 8px !important;
             border: none !important;
             font-weight: 700 !important;
             transition: all 0.3s ease;
         }
-        div.stButton > button:hover {
+        div.stButton > button:hover, button[kind="primary"]:hover {
             transform: translateY(-2px);
             box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4);
+            color: #000000 !important;
         }
 
-        /* 5. ITEM CARDS */
+        /* 5. CARD STYLE FOR LOGIN & FORMS */
+        /* This makes the login form look like a card */
+        div[data-testid="stForm"] {
+            background-color: #161616;
+            border: 1px solid #333;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        /* 6. ITEM CARDS */
         .item-card {
             background-color: #161616;
             border: 1px solid #2A2A2A;
@@ -88,12 +100,12 @@ def local_css():
             transition: border 0.3s ease;
         }
         
-        /* 6. PROGRESS BAR */
+        /* 7. PROGRESS BAR */
         .stProgress > div > div > div > div {
             background-color: #D4AF37;
         }
 
-        /* 7. NEW BADGE */
+        /* 8. NEW BADGE */
         .new-badge {
             background-color: #D4AF37;
             color: #000;
@@ -105,7 +117,7 @@ def local_css():
             margin-left: 5px;
         }
         
-        /* 8. LANDING HERO SECTION */
+        /* 9. LANDING HERO SECTION */
         .landing-hero {
             height: 90vh;
             display: flex;
@@ -118,7 +130,6 @@ def local_css():
         
         .scroll-indicator {
             margin-top: 50px;
-            /* Removed generic font size/color here, handled in the SVG/span directly */
             animation: bounce 2s infinite;
         }
         
@@ -239,12 +250,11 @@ def sidebar_info():
             st.rerun()
 
 def login_signup_screen():
-    # --- 1. FULL SCREEN LANDING HERO (UPDATED WITH GOLD SVG ARROW) ---
-    # Replaced the blue emoji ⬇️ with a custom SVG colored #D4AF37
+    # --- 1. FULL SCREEN LANDING HERO ---
     st.markdown("""
         <div class="landing-hero">
             <h1 style="font-size: 4rem; margin-bottom: 0;">KITCHEN MIND PRO</h1>
-            <p style="font-size: 1.2rem; opacity: 0.8; letter-spacing: 2px;">Your Smart Inventory Manager</p>
+            <p style="font-size: 1.2rem; opacity: 0.8; letter-spacing: 2px;">YOUR SMART INVENTORY MANAGER</p>
             <div class="scroll-indicator">
                 <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M12 4V20M12 20L18 14M12 20L6 14" stroke="#D4AF37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -256,25 +266,29 @@ def login_signup_screen():
         <hr style="border: 0; border-top: 1px solid #333; margin-bottom: 50px;">
     """, unsafe_allow_html=True)
 
-    # --- 2. LOGIN FORM (Appears below) ---
-    c1, c2, c3 = st.columns([1,2,1])
+    # --- 2. LOGIN FORM (Card Style) ---
+    c1, c2, c3 = st.columns([1, 1.5, 1]) # Adjusted column ratio for better card centering
     with c2:
         st.markdown('<div style="text-align: center;"><h3 style="color: #D4AF37;">WELCOME BACK</h3></div>', unsafe_allow_html=True)
         st.write("")
         
         tab1, tab2 = st.tabs(["LOGIN", "REGISTER"])
+        
         with tab1:
+            # The CSS automatically styles this st.form as a card
             with st.form("login_form"):
                 email = st.text_input("Email").lower().strip()
                 password = st.text_input("Password", type="password")
                 st.write("")
-                if st.form_submit_button("LOGIN", use_container_width=True):
+                # Added type="primary" to trigger the Gold Gradient CSS
+                if st.form_submit_button("LOGIN", use_container_width=True, type="primary"):
                     users = db.collection('users').where('email', '==', email).where('password', '==', password).stream()
                     user = next(users, None)
                     if user:
                         st.session_state.user_info = user.to_dict()
                         st.rerun()
                     else: st.error("Invalid credentials.")
+        
         with tab2:
             with st.form("signup_form"):
                 new_email = st.text_input("New Email").lower().strip()
@@ -282,7 +296,8 @@ def login_signup_screen():
                 mode = st.radio("Setup", ["Create New Household", "Join Existing"])
                 hh_input = st.text_input("Household Name or ID")
                 st.write("")
-                if st.form_submit_button("CREATE ACCOUNT", use_container_width=True):
+                # Added type="primary" here too
+                if st.form_submit_button("CREATE ACCOUNT", use_container_width=True, type="primary"):
                     if not new_email or not new_pass: return
                     hh_id = str(uuid.uuid4())[:6].upper()
                     if mode == "Create New Household":
@@ -339,7 +354,7 @@ def manual_add_dialog(hh_id):
         expiry = c7.date_input("Expiry", datetime.date.today() + datetime.timedelta(days=7))
         store = c8.selectbox("Store", ["General", "Costco", "Whole Foods", "Trader Joe's"])
         
-        if st.form_submit_button("Save Item"):
+        if st.form_submit_button("Save Item", type="primary"):
             if name:
                 db.collection('inventory').add({
                     "item_name": name, "category": category,
