@@ -43,7 +43,7 @@ def local_css():
             color: var(--text-brown);
         }
         
-        /* TARGETED Typography Overrides (Removed 'span' and 'div' to fix icons) */
+        /* Typography Overrides (Removed 'span' and 'div' to fix icons) */
         h1, h2, h3, h4, h5, h6, p, label, .stButton button, .stTextInput input {
             font-family: 'Fredoka', sans-serif !important;
             color: var(--text-brown) !important;
@@ -208,10 +208,38 @@ def get_down_arrow():
 </svg>
     """
 
+# --- HELPER: BARCODE (Restored Logic) ---
+def fetch_barcode_data(barcode):
+    if not barcode or len(barcode) < 5: return None
+    try:
+        url = f"https://world.openfoodfacts.org/api/v0/product/{barcode}.json"
+        response = requests.get(url, timeout=3)
+        data = response.json()
+        if data.get('status') == 1:
+            p = data['product']
+            raw_qty = p.get('quantity', '')
+            weight_val = 0.0
+            unit_val = 'count'
+            if raw_qty:
+                match = re.match(r"([0-9.]+)\s*([a-zA-Z]+)", raw_qty)
+                if match:
+                    try:
+                        weight_val = float(match.group(1))
+                        unit_val = match.group(2).lower()
+                    except: pass
+            return {
+                "item_name": p.get('product_name', ''),
+                "notes": p.get('brands', ''),
+                "weight": weight_val,
+                "weight_unit": unit_val
+            }
+    except: return None
+    return None
+
 # --- MAIN LOGIC ---
 def main():
     local_css()
-    # Initialize Session State
+    # Initialize Safe Session State for ALL variables
     if 'user_info' not in st.session_state: st.session_state.user_info = None
     if 'imgs' not in st.session_state: st.session_state.imgs = {'f':None, 'b':None, 'd':None}
     if 'active' not in st.session_state: st.session_state.active = None
@@ -224,7 +252,6 @@ def main():
 
 def login_screen():
     # --- HERO SECTION ---
-    # NOTE: HTML string is flushed left to prevent code block rendering error
     st.markdown(f"""
 <div class="landing-hero">
 {get_bean_logo()}
@@ -236,7 +263,7 @@ def login_screen():
 </div>
 """, unsafe_allow_html=True)
     
-    # --- LOGIN FORM (Functional) ---
+    # --- LOGIN FORM ---
     c1, c2, c3 = st.columns([1, 1.5, 1])
     with c2:
         st.markdown("<h3 style='text-align: center;'>Welcome In</h3>", unsafe_allow_html=True)
@@ -255,7 +282,8 @@ def login_screen():
                             st.session_state.user_info = user.to_dict()
                             st.rerun()
                         else: st.error("We couldn't find that account.")
-                    except Exception as e: st.error(f"Login error: {e}")
+                    except Exception as e:
+                        st.error(f"Login Error: {e}")
         
         with tab2:
             with st.form("signup_form"):
@@ -272,10 +300,11 @@ def login_screen():
                             })
                             db.collection('households').document(uid).set({"name": hh, "id": uid})
                             st.success(f"Welcome! Your ID is {uid}")
-                        except Exception as e: st.error(f"Signup error: {e}")
+                        except Exception as e:
+                            st.error(f"Signup Error: {e}")
 
 def app_interface():
-    # --- SIDEBAR (Minimal & Joyful) ---
+    # --- SIDEBAR ---
     with st.sidebar:
         st.markdown(f"{get_bean_logo()}", unsafe_allow_html=True)
         st.markdown("### Kitchen Mind")
@@ -283,14 +312,16 @@ def app_interface():
             st.session_state.user_info = None
             st.rerun()
 
-    # --- TOP NAVIGATION (Friendly Tabs) ---
+    # --- TOP NAVIGATION ---
     t1, t2, t3, t4 = st.tabs(["🏠 Home", "📸 Scanner", "📦 Pantry", "🛒 List"])
-    hh_id = st.session_state.user_info.get('household_id')
-
-    with t1: page_home(hh_id)
-    with t2: page_scanner(hh_id)
-    with t3: page_pantry(hh_id)
-    with t4: page_list(hh_id)
+    
+    # Ensure household ID exists safely
+    if st.session_state.user_info:
+        hh_id = st.session_state.user_info.get('household_id', 'DEMO')
+        with t1: page_home(hh_id)
+        with t2: page_scanner(hh_id)
+        with t3: page_pantry(hh_id)
+        with t4: page_list(hh_id)
 
 # --- 1. HOME ---
 def page_home(hh_id):
@@ -319,23 +350,43 @@ def page_home(hh_id):
 
 @st.dialog("Add Item")
 def manual_add_dialog(hh_id):
+    # RESTORED FULL FORM LOGIC FROM OLD CODE
     with st.form("manual_add"):
-        name = st.text_input("What is it?")
-        cat = st.selectbox("Category", ["Produce", "Dairy", "Pantry", "Snacks", "Frozen"])
-        qty = st.number_input("How many?", 1.0)
+        c1, c2 = st.columns([2,1])
+        name = c1.text_input("Item Name")
+        category = c2.selectbox("Category", ["Produce", "Dairy", "Meat", "Pantry", "Frozen", "Spices", "Beverages", "Household"])
+        
+        st.markdown("##### Details")
+        c3, c4, c5 = st.columns(3)
+        qty = c3.number_input("Count", 1.0, step=0.5)
+        weight = c4.number_input("Weight", 0.0, step=0.5)
+        w_unit = c5.selectbox("Unit", ["count", "oz", "lbs", "g", "kg", "ml", "L", "gal"])
+        
+        c6, c7, c8 = st.columns(3)
+        threshold = c6.number_input("Alert Limit", 1.0)
+        expiry = c7.date_input("Expiry", datetime.date.today() + datetime.timedelta(days=7))
+        store = c8.selectbox("Store", ["General", "Costco", "Whole Foods", "Trader Joe's"])
+        
         if st.form_submit_button("Add to Pantry"):
-            db.collection('inventory').add({
-                "item_name": name, "category": cat, "quantity": qty, "household_id": hh_id,
-                "added_at": firestore.SERVER_TIMESTAMP, "initial_quantity": qty
-            })
-            st.rerun()
+            try:
+                db.collection('inventory').add({
+                    "item_name": name, "category": category,
+                    "quantity": float(qty), "initial_quantity": float(qty),
+                    "weight": float(weight), "weight_unit": w_unit,
+                    "threshold": float(threshold), "estimated_expiry": str(expiry),
+                    "suggested_store": store, "household_id": hh_id,
+                    "added_at": firestore.SERVER_TIMESTAMP,
+                    "last_restocked": firestore.SERVER_TIMESTAMP
+                })
+                st.rerun()
+            except Exception as e:
+                st.error("Could not add item.")
 
 # --- 2. SCANNER ---
 def page_scanner(hh_id):
     st.markdown("## 📸 Kitchen Mind")
     st.info("Snap photos of your groceries. We'll handle the rest.")
     
-    # Camera Block Helper
     def cam_block(label, key):
         with st.container(border=True):
             st.markdown(f"**{label}**")
@@ -365,10 +416,24 @@ def page_scanner(hh_id):
         if st.button("✨ Analyze Photos", type="primary", use_container_width=True):
             with st.spinner("Reading labels..."):
                 try:
-                    prompt = "Extract JSON: item_name, quantity(float), weight(float), weight_unit, category, estimated_expiry(YYYY-MM-DD)"
+                    prompt = """
+                    Extract JSON: item_name, quantity(float), weight(float), weight_unit, 
+                    category, estimated_expiry(YYYY-MM-DD), barcode, suggested_store
+                    """
                     res = client.models.generate_content(model="gemini-flash-latest", contents=[prompt]+valid)
                     clean = res.text.replace("```json","").replace("```","").strip()
-                    st.session_state.data = json.loads(clean)
+                    ai_data = json.loads(clean)
+                    
+                    # RESTORED: Barcode Logic integration
+                    for item in ai_data:
+                        bc = item.get('barcode', '')
+                        if bc:
+                            db_data = fetch_barcode_data(bc)
+                            if db_data:
+                                if not item.get('item_name'): item['item_name'] = db_data['item_name']
+                                if not item.get('notes'): item['notes'] = db_data['notes']
+
+                    st.session_state.data = ai_data
                 except: st.error("Could not read image. Try again.")
 
     if st.session_state.data:
@@ -385,49 +450,93 @@ def page_scanner(hh_id):
             time.sleep(1)
             st.rerun()
 
-# --- 3. PANTRY ---
+# --- 3. PANTRY (Restored Logic + Joyful UI) ---
 def page_pantry(hh_id):
     st.markdown("## 📦 My Pantry")
+    
     try:
         items = list(db.collection('inventory').where('household_id','==',hh_id).stream())
         data = [{'id': i.id, **i.to_dict()} for i in items]
-    except: data = []
+        
+        # RESTORED: Auto-shopping list logic
+        shop_docs = db.collection('shopping_list').where('household_id', '==', hh_id).where('status', '==', 'Pending').stream()
+        shopping_list_names = {d.to_dict()['item_name'].lower() for d in shop_docs}
+    except:
+        data = []
+        shopping_list_names = set()
     
     if not data:
         st.info("Your pantry is empty. Time to go shopping!")
         return
 
+    today = datetime.date.today()
+
     for item in data:
+        # RESTORED: Calculation Logic
+        current_qty = float(item.get('quantity', 1))
+        initial_qty = float(item.get('initial_quantity', current_qty))
+        thresh = float(item.get('threshold', 1))
+        
+        try: exp = datetime.datetime.strptime(item.get('estimated_expiry', ''), "%Y-%m-%d").date()
+        except: exp = today + datetime.timedelta(days=365)
+        
+        days_left = (exp - today).days
+        
+        # Auto-Add Logic
+        if current_qty < thresh and item['item_name'].lower() not in shopping_list_names:
+             db.collection('shopping_list').add({
+                "item_name": item['item_name'], "household_id": hh_id,
+                "store": item.get('suggested_store', 'General'), "qty_needed": 1,
+                "status": "Pending", "reason": "Auto-Refill"
+            })
+             st.toast(f"🚨 Added {item['item_name']} to list")
+             shopping_list_names.add(item['item_name'].lower())
+
+        # Badge Logic
+        if days_left < 0: badge = "🔴 Expired"
+        elif days_left < 7: badge = f"🟠 {days_left}d"
+        else: badge = "🟢 Good"
+
+        # JOYFUL CARD UI
         with st.container(border=True):
             c1, c2 = st.columns([4, 1])
             with c1:
                 st.markdown(f"### {item.get('item_name','Unknown')}")
-                st.caption(f"{item.get('category','General')} • {item.get('weight', '')} {item.get('weight_unit','')}")
+                st.caption(f"{badge} • {item.get('category','General')} • {item.get('weight', '')} {item.get('weight_unit','')}")
+                
                 # Visual Bar
-                q = float(item.get('quantity', 0))
-                iq = float(item.get('initial_quantity', q)) or 1.0
-                st.progress(min(q/iq, 1.0))
+                prog = min(current_qty/initial_qty, 1.0) if initial_qty > 0 else 0
+                st.progress(prog)
+                
             with c2:
                 st.write("")
-                st.markdown(f"**{q} left**")
+                st.markdown(f"**{current_qty} left**")
             
             with st.expander("Update"):
-                nq = st.number_input("Count", 0.0, value=q, key=f"q_{item['id']}")
-                if nq != q:
+                # RESTORED: Full Edit Fields
+                ec1, ec2 = st.columns(2)
+                nq = ec1.number_input("Count", 0.0, value=current_qty, key=f"q_{item['id']}")
+                n_thr = ec2.number_input("Alert Limit", 0.0, value=thresh, key=f"t_{item['id']}")
+                
+                if nq != current_qty:
                     db.collection('inventory').document(item['id']).update({'quantity': nq})
                     st.rerun()
+                if n_thr != thresh:
+                    db.collection('inventory').document(item['id']).update({'threshold': n_thr})
+                    st.rerun()
+                    
                 if st.button("Remove", key=f"del_{item['id']}"):
                     db.collection('inventory').document(item['id']).delete()
                     st.rerun()
 
-# --- 4. LIST ---
+# --- 4. LIST (Restored Logic) ---
 def page_list(hh_id):
     st.markdown("## 🛒 Shopping List")
     with st.form("add_list"):
         c1, c2 = st.columns([3,1])
         txt = c1.text_input("Need anything?")
         if st.form_submit_button("Add") and txt:
-            db.collection('shopping_list').add({"item_name": txt, "household_id": hh_id, "status": "Pending"})
+            db.collection('shopping_list').add({"item_name": txt, "household_id": hh_id, "status": "Pending", "store": "General"})
             st.rerun()
             
     try:
@@ -437,12 +546,19 @@ def page_list(hh_id):
     
     if not data: st.success("All caught up!"); return
     
-    for i in data:
-        c1, c2 = st.columns([1, 6])
-        if c1.button("✓", key=i['id']):
-            db.collection('shopping_list').document(i['id']).update({'status': 'Bought'})
-            st.rerun()
-        c2.markdown(f"**{i['item_name']}**")
+    # RESTORED: Group by Store
+    stores = list(set([d.get('store','General') for d in data]))
+    
+    for s in stores:
+        st.markdown(f"#### 📍 {s}")
+        store_items = [d for d in data if d.get('store')==s]
+        
+        for i in store_items:
+            c1, c2 = st.columns([1, 6])
+            if c1.button("✓", key=i['id']):
+                db.collection('shopping_list').document(i['id']).update({'status': 'Bought'})
+                st.rerun()
+            c2.markdown(f"**{i['item_name']}**")
         st.divider()
 
 if __name__ == "__main__":
