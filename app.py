@@ -44,7 +44,6 @@ def local_css():
         }
         
         /* TARGETED Typography Overrides */
-        /* We DO NOT target 'div' or 'span' generically to avoid breaking Icons */
         h1, h2, h3, h4, h5, h6, p, label, .stButton button, .stTextInput input {
             font-family: 'Fredoka', sans-serif !important;
             color: var(--text-brown) !important;
@@ -251,7 +250,6 @@ def main():
         app_interface()
 
 def login_screen():
-    # --- HERO SECTION ---
     st.markdown(f"""
 <div class="landing-hero">
 {get_bean_logo()}
@@ -263,7 +261,6 @@ def login_screen():
 </div>
 """, unsafe_allow_html=True)
     
-    # --- LOGIN FORM ---
     c1, c2, c3 = st.columns([1, 1.5, 1])
     with c2:
         st.markdown("<h3 style='text-align: center;'>Welcome In</h3>", unsafe_allow_html=True)
@@ -304,7 +301,6 @@ def login_screen():
                             st.error(f"Signup Error: {e}")
 
 def app_interface():
-    # --- SIDEBAR ---
     with st.sidebar:
         st.markdown(f"{get_bean_logo()}", unsafe_allow_html=True)
         st.markdown("### Kitchen Mind")
@@ -312,7 +308,6 @@ def app_interface():
             st.session_state.user_info = None
             st.rerun()
 
-    # --- TOP NAVIGATION ---
     t1, t2, t3, t4 = st.tabs(["🏠 Home", "📸 Scanner", "📦 Pantry", "🛒 List"])
     
     if st.session_state.user_info:
@@ -322,7 +317,6 @@ def app_interface():
         with t3: page_pantry(hh_id)
         with t4: page_list(hh_id)
 
-# --- 1. HOME ---
 def page_home(hh_id):
     st.markdown("## Good Morning!")
     st.markdown("What would you like to do?")
@@ -356,9 +350,9 @@ def manual_add_dialog(hh_id):
         
         st.markdown("##### Details")
         c3, c4, c5 = st.columns(3)
-        # PRO LOGIC: Added Initial Quantity back
+        # CHANGED: Label is now "Initial Qty" for clarity
         qty = c3.number_input("Current Count", 1.0, step=0.5)
-        init_qty = c4.number_input("Full Size", 1.0, step=0.5, value=qty, help="How much is in a full container?")
+        init_qty = c4.number_input("Initial Qty", 1.0, step=0.5, value=qty, help="Total capacity or starting amount")
         weight = c5.number_input("Weight", 0.0, step=0.5)
         
         c6, c7, c8 = st.columns(3)
@@ -382,7 +376,6 @@ def manual_add_dialog(hh_id):
             except Exception as e:
                 st.error("Could not add item.")
 
-# --- 2. SCANNER ---
 def page_scanner(hh_id):
     st.markdown("## 📸 Kitchen Mind")
     st.info("Snap photos of your groceries. We'll handle the rest.")
@@ -424,7 +417,6 @@ def page_scanner(hh_id):
                     clean = res.text.replace("```json","").replace("```","").strip()
                     ai_data = json.loads(clean)
                     
-                    # PRO LOGIC: Barcode Integration
                     for item in ai_data:
                         bc = item.get('barcode', '')
                         if bc:
@@ -450,7 +442,6 @@ def page_scanner(hh_id):
             time.sleep(1)
             st.rerun()
 
-# --- 3. PANTRY (Pro Logic + Joyful UI) ---
 def page_pantry(hh_id):
     st.markdown("## 📦 My Pantry")
     
@@ -458,7 +449,6 @@ def page_pantry(hh_id):
         items = list(db.collection('inventory').where('household_id','==',hh_id).stream())
         data = [{'id': i.id, **i.to_dict()} for i in items]
         
-        # PRO LOGIC: Fetch shopping list to prevent duplicates
         shop_docs = db.collection('shopping_list').where('household_id', '==', hh_id).where('status', '==', 'Pending').stream()
         shopping_list_names = {d.to_dict()['item_name'].lower() for d in shop_docs}
     except:
@@ -474,7 +464,7 @@ def page_pantry(hh_id):
     for item in data:
         current_qty = float(item.get('quantity', 1))
         initial_qty = float(item.get('initial_quantity', current_qty))
-        if initial_qty == 0: initial_qty = 1.0 # Prevent division by zero
+        if initial_qty == 0: initial_qty = 1.0 
         thresh = float(item.get('threshold', 1))
         
         try: exp = datetime.datetime.strptime(item.get('estimated_expiry', ''), "%Y-%m-%d").date()
@@ -482,7 +472,7 @@ def page_pantry(hh_id):
         
         days_left = (exp - today).days
         
-        # PRO LOGIC: Auto-Refill
+        # LOGIC: Auto-Add to Shopping List based on Threshold (Alert Limit)
         if current_qty < thresh and item['item_name'].lower() not in shopping_list_names:
              db.collection('shopping_list').add({
                 "item_name": item['item_name'], "household_id": hh_id,
@@ -512,8 +502,8 @@ def page_pantry(hh_id):
             with st.expander("Update"):
                 ec1, ec2, ec3 = st.columns(3)
                 nq = ec1.number_input("Count", 0.0, value=current_qty, key=f"q_{item['id']}")
-                # PRO LOGIC: Editable Initial Quantity
-                ni = ec2.number_input("Full Size", 0.0, value=initial_qty, key=f"iq_{item['id']}")
+                # CHANGED: Label is now "Initial Qty" for clarity
+                ni = ec2.number_input("Initial Qty", 0.0, value=initial_qty, key=f"iq_{item['id']}")
                 n_thr = ec3.number_input("Alert Limit", 0.0, value=thresh, key=f"t_{item['id']}")
                 
                 updates = {}
@@ -529,7 +519,6 @@ def page_pantry(hh_id):
                     db.collection('inventory').document(item['id']).delete()
                     st.rerun()
 
-# --- 4. LIST ---
 def page_list(hh_id):
     st.markdown("## 🛒 Shopping List")
     with st.form("add_list"):
@@ -546,7 +535,6 @@ def page_list(hh_id):
     
     if not data: st.success("All caught up!"); return
     
-    # PRO LOGIC: Group by Store
     stores = list(set([d.get('store','General') for d in data]))
     
     for s in stores:
