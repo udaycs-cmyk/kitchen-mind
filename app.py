@@ -208,9 +208,9 @@ def get_bean_logo():
 
 def get_down_arrow():
     return """
-    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#FF8C69" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 5v14M19 12l-7 7-7-7"/>
-    </svg>
+<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#FF8C69" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 5v14M19 12l-7 7-7-7"/>
+</svg>
     """
 
 # --- MAIN LOGIC ---
