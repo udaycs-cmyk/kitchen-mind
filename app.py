@@ -105,9 +105,32 @@ def local_css():
             margin-left: 5px;
         }
         
-        /* Dashboard Grid Cards */
-        div[data-testid="stVerticalBlock"] > div[data-testid="stVerticalBlock"] {
-            border-radius: 15px;
+        /* 8. LANDING HERO SECTION (New) */
+        .landing-hero {
+            height: 90vh; /* Takes up almost full screen height */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            animation: fadeIn 1.5s ease-in-out;
+        }
+        
+        .scroll-indicator {
+            margin-top: 50px;
+            font-size: 24px;
+            color: #D4AF37;
+            animation: bounce 2s infinite;
+        }
+        
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% {transform: translateY(0);}
+            40% {transform: translateY(-10px);}
+            60% {transform: translateY(-5px);}
+        }
+        @keyframes fadeIn {
+            0% {opacity: 0;}
+            100% {opacity: 1;}
         }
 
         /* Hide default header/footer */
@@ -217,10 +240,23 @@ def sidebar_info():
             st.rerun()
 
 def login_signup_screen():
+    # --- 1. FULL SCREEN LANDING HERO ---
+    # This div takes up 90vh height, pushing the login form "below the fold"
+    st.markdown("""
+        <div class="landing-hero">
+            <h1 style="font-size: 4rem; margin-bottom: 0;">KITCHEN MIND PRO</h1>
+            <p style="font-size: 1.2rem; opacity: 0.8; letter-spacing: 2px;">LUXURY HOME INVENTORY</p>
+            <div class="scroll-indicator">
+                ⬇️<br><span style="font-size: 12px; opacity: 0.6;">SCROLL TO LOGIN</span>
+            </div>
+        </div>
+        <hr style="border: 0; border-top: 1px solid #333; margin-bottom: 50px;">
+    """, unsafe_allow_html=True)
+
+    # --- 2. LOGIN FORM (Appears below) ---
     c1, c2, c3 = st.columns([1,2,1])
     with c2:
-        st.markdown('<div style="text-align: center;"><h1 style="color: #D4AF37; margin-bottom:0;">KITCHEN MIND PRO</h1></div>', unsafe_allow_html=True)
-        st.markdown("<p style='text-align: center; color: #888; margin-top: -10px;'>SMART HOME INVENTORY</p>", unsafe_allow_html=True)
+        st.markdown('<div style="text-align: center;"><h3 style="color: #D4AF37;">WELCOME BACK</h3></div>', unsafe_allow_html=True)
         st.write("")
         
         tab1, tab2 = st.tabs(["LOGIN", "REGISTER"])
