@@ -219,9 +219,9 @@ def login_screen():
     with c2:
         st.markdown("<h3 style='text-align:center;'>Welcome In</h3>", unsafe_allow_html=True)
         
-        # RESTORED: Tabs for Sign In vs Create Account
         tab1, tab2 = st.tabs(["Sign In", "New Account"])
         
+        # --- TAB 1: LOGIN ---
         with tab1:
             with st.form("log"):
                 email=st.text_input("Email")
@@ -234,23 +234,51 @@ def login_screen():
                         else: st.error("No account found.")
                     except: st.error("Login error.")
         
+        # --- TAB 2: SIGNUP (With Restore JOIN Feature) ---
         with tab2:
             with st.form("signup"):
                 new_email = st.text_input("New Email")
                 new_pass = st.text_input("Create Password", type="password")
-                hh = st.text_input("Household Name")
+                
+                # RESTORED: Toggle for Create vs Join
+                mode = st.radio("I want to:", ["Create New Household", "Join Existing Household"])
+                
+                hh_input = ""
+                if mode == "Create New Household":
+                    hh_input = st.text_input("Name your Kitchen (e.g. 'Home')")
+                else:
+                    hh_input = st.text_input("Enter Household ID (Ask your partner)")
+                
                 st.write("")
+                
                 if st.form_submit_button("Create Account"):
-                    if new_email and new_pass:
+                    if new_email and new_pass and hh_input:
                         try:
-                            uid = str(uuid.uuid4())[:6].upper()
+                            final_hh_id = ""
+                            
+                            if mode == "Create New Household":
+                                # Generate New ID
+                                final_hh_id = str(uuid.uuid4())[:6].upper()
+                                db.collection('households').document(final_hh_id).set({"name": hh_input, "id": final_hh_id})
+                                success_msg = f"Kitchen Created! Your Shared ID is: {final_hh_id}"
+                            else:
+                                # Use Existing ID
+                                final_hh_id = hh_input.strip().upper()
+                                # Validation: Check if ID exists
+                                if not db.collection('households').document(final_hh_id).get().exists:
+                                    st.error("That Household ID does not exist.")
+                                    st.stop()
+                                success_msg = "Joined successfully!"
+
+                            # Create User
                             db.collection('users').add({
                                 "email": new_email.lower().strip(), 
                                 "password": new_pass, 
-                                "household_id": uid
+                                "household_id": final_hh_id
                             })
-                            db.collection('households').document(uid).set({"name": hh, "id": uid})
-                            st.success(f"Welcome! Your ID is {uid}. Please switch to Sign In.")
+                            
+                            st.success(f"{success_msg} Please switch to Sign In.")
+                            
                         except Exception as e:
                             st.error(f"Signup Error: {e}")
 
