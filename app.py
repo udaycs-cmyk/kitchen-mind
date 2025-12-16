@@ -221,29 +221,42 @@ def login_screen():
         
         tab1, tab2 = st.tabs(["Sign In", "New Account"])
         
-        # --- TAB 1: LOGIN ---
+        # --- TAB 1: LOGIN (FIXED: st.rerun outside try/except) ---
         with tab1:
             with st.form("log"):
                 email=st.text_input("Email")
                 pw=st.text_input("Password",type="password")
                 if st.form_submit_button("Start Cooking"):
+                    user_data = None
+                    error_msg = None
+                    
                     try:
+                        # Attempt to find user
                         users=db.collection('users').where('email','==',email.strip().lower()).where('password','==',pw).stream()
                         u=next(users,None)
-                        if u: st.session_state.user_info=u.to_dict(); st.rerun()
-                        else: st.error("No account found.")
-                    except: st.error("Login error.")
+                        if u: 
+                            user_data = u.to_dict()
+                        else: 
+                            error_msg = "No account found."
+                    except Exception as e:
+                        error_msg = f"Login Error: {e}"
+                    
+                    # Process result outside try/except
+                    if user_data:
+                        st.session_state.user_info = user_data
+                        st.rerun()
+                    elif error_msg:
+                        st.error(error_msg)
         
-        # --- TAB 2: SIGNUP (Fixed Logic) ---
+        # --- TAB 2: SIGNUP (With Restore JOIN Feature) ---
         with tab2:
-            # MOVED OUTSIDE THE FORM so clicking it triggers a refresh immediately
             mode = st.radio("I want to:", ["Create New Household", "Join Existing Household"], horizontal=True)
             
             with st.form("signup"):
                 new_email = st.text_input("New Email")
                 new_pass = st.text_input("Create Password", type="password")
                 
-                # Logic to show different labels based on mode
+                # Dynamic placeholder
                 hh_input = ""
                 if mode == "Create New Household":
                     hh_input = st.text_input("Name your Kitchen (e.g. 'Home')")
