@@ -234,15 +234,16 @@ def login_screen():
                         else: st.error("No account found.")
                     except: st.error("Login error.")
         
-        # --- TAB 2: SIGNUP (With Restore JOIN Feature) ---
+        # --- TAB 2: SIGNUP (Fixed Logic) ---
         with tab2:
+            # MOVED OUTSIDE THE FORM so clicking it triggers a refresh immediately
+            mode = st.radio("I want to:", ["Create New Household", "Join Existing Household"], horizontal=True)
+            
             with st.form("signup"):
                 new_email = st.text_input("New Email")
                 new_pass = st.text_input("Create Password", type="password")
                 
-                # RESTORED: Toggle for Create vs Join
-                mode = st.radio("I want to:", ["Create New Household", "Join Existing Household"])
-                
+                # Logic to show different labels based on mode
                 hh_input = ""
                 if mode == "Create New Household":
                     hh_input = st.text_input("Name your Kitchen (e.g. 'Home')")
@@ -255,28 +256,26 @@ def login_screen():
                     if new_email and new_pass and hh_input:
                         try:
                             final_hh_id = ""
+                            success_msg = ""
                             
                             if mode == "Create New Household":
-                                # Generate New ID
+                                # Create ID
                                 final_hh_id = str(uuid.uuid4())[:6].upper()
                                 db.collection('households').document(final_hh_id).set({"name": hh_input, "id": final_hh_id})
                                 success_msg = f"Kitchen Created! Your Shared ID is: {final_hh_id}"
                             else:
-                                # Use Existing ID
+                                # Join ID
                                 final_hh_id = hh_input.strip().upper()
-                                # Validation: Check if ID exists
                                 if not db.collection('households').document(final_hh_id).get().exists:
                                     st.error("That Household ID does not exist.")
                                     st.stop()
                                 success_msg = "Joined successfully!"
 
-                            # Create User
                             db.collection('users').add({
                                 "email": new_email.lower().strip(), 
                                 "password": new_pass, 
                                 "household_id": final_hh_id
                             })
-                            
                             st.success(f"{success_msg} Please switch to Sign In.")
                             
                         except Exception as e:
@@ -398,9 +397,7 @@ def page_pantry(hh_id):
         curr = float(item.get('quantity', 0))
         thresh = float(item.get('threshold', 1))
         
-        # We need to fetch shopping list to prevent duplicates (mocked for speed in loop)
-        # Ideally fetch this list once outside the loop for performance
-        
+        # Smart icon logic
         icon = get_smart_icon(item.get('item_name', ''), item.get('category', 'General'))
         
         with cols[idx % 2]:
@@ -433,7 +430,18 @@ def page_pantry(hh_id):
                     if nw != float(item.get('weight', 0)): updates['weight'] = nw
                     if nt != float(item.get('threshold', 1)): updates['threshold'] = nt
                     
+                    # Auto-Refill Logic if Threshold breached
                     if updates:
+                        # If quantity dropped below threshold
+                        if 'quantity' in updates and updates['quantity'] < float(item.get('threshold', 1)):
+                            needed = max(1.0, float(item.get('threshold', 1)) - updates['quantity'])
+                            db.collection('shopping_list').add({
+                                "item_name": item['item_name'], "household_id": hh_id,
+                                "store": item.get('suggested_store', 'General'), "qty_needed": needed,
+                                "status": "Pending", "reason": "Auto-Refill"
+                            })
+                            st.toast(f"🚨 Added to List")
+
                         db.collection('inventory').document(item['id']).update(updates)
                         st.rerun()
                     
