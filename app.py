@@ -1,5 +1,5 @@
 import streamlit as st
-import google.genai as genai
+import google.generativeai as genai
 import firebase_admin
 from firebase_admin import credentials, firestore
 from PIL import Image
@@ -11,6 +11,13 @@ import requests
 import re
 import math
 import io
+
+# --- IMPORT MIC RECORDER ---
+try:
+    from streamlit_mic_recorder import mic_recorder
+except ImportError:
+    st.error("Please install the library: pip install streamlit-mic-recorder")
+    st.stop()
 
 # --- 1. CONFIGURATION ---
 st.set_page_config(
@@ -43,7 +50,7 @@ def local_css():
         }
         
         /* Typography Override */
-        h1, h2, h3, h4, h5, h6, p, label, .stButton button, .stTextInput input {
+        h1, h2, h3, h4, h5, h6, p, label, .stButton button, .stTextInput input, .stSelectbox, div[data-baseweb="select"] {
             font-family: 'Fredoka', sans-serif !important;
             color: var(--text-brown) !important;
         }
@@ -147,12 +154,14 @@ def local_css():
     """, unsafe_allow_html=True)
 
 # --- API & DATABASE ---
+# NOTE: Switched to google.generativeai for standard Gemini handling
 if "GEMINI_API_KEY" in st.secrets:
     GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
 else:
     GEMINI_API_KEY = "PASTE_YOUR_LOCAL_KEY_HERE"
 
-try: client = genai.Client(api_key=GEMINI_API_KEY)
+try: 
+    genai.configure(api_key=GEMINI_API_KEY)
 except: pass
 
 if not firebase_admin._apps:
@@ -190,6 +199,36 @@ def get_smart_icon(item_name, category):
     }
     return cat_icons.get(category, "🥗")
 
+# --- GEMINI HELPER ---
+def parse_voice_to_json(audio_bytes):
+    """Sends audio bytes to Gemini and expects a JSON inventory list back."""
+    try:
+        model = genai.GenerativeModel("gemini-1.5-flash")
+        
+        prompt = """
+        Listen to this audio. The user is adding items to their kitchen inventory.
+        Extract items as a strictly formatted JSON list of objects.
+        For each item mentioned, extract:
+        - "item_name": (string) The name of the product.
+        - "quantity": (number) The numeric count or weight amount. Default to 1 if not specified.
+        - "category": (string) Choose best fit from: [Produce, Dairy, Meat, Pantry, Frozen, Spices, Beverages, Household].
+        - "estimated_expiry": (string) 'YYYY-MM-DD'. Estimate based on the item type (e.g., Milk = +7 days, Pasta = +365 days).
+        
+        Example Output: [{"item_name": "Milk", "quantity": 1, "category": "Dairy", "estimated_expiry": "2024-12-01"}]
+        Return ONLY the JSON. No markdown formatting.
+        """
+        
+        response = model.generate_content([
+            prompt,
+            {"mime_type": "audio/wav", "data": audio_bytes}
+        ])
+        
+        txt = response.text.replace('```json', '').replace('```', '').strip()
+        return json.loads(txt)
+    except Exception as e:
+        st.error(f"AI Error: {e}")
+        return []
+
 # --- MAIN ---
 def main():
     local_css()
@@ -197,6 +236,7 @@ def main():
     if 'imgs' not in st.session_state: st.session_state.imgs = {'f':None,'b':None,'d':None}
     if 'active' not in st.session_state: st.session_state.active = None
     if 'data' not in st.session_state: st.session_state.data = None
+    if 'voice_data' not in st.session_state: st.session_state.voice_data = None
     
     if not st.session_state.user_info:
         login_screen()
@@ -221,7 +261,7 @@ def login_screen():
         
         tab1, tab2 = st.tabs(["Sign In", "New Account"])
         
-        # --- TAB 1: LOGIN (FIXED: st.rerun outside try/except) ---
+        # --- TAB 1: LOGIN ---
         with tab1:
             with st.form("log"):
                 email=st.text_input("Email")
@@ -248,7 +288,7 @@ def login_screen():
                     elif error_msg:
                         st.error(error_msg)
         
-        # --- TAB 2: SIGNUP (With Restore JOIN Feature) ---
+        # --- TAB 2: SIGNUP ---
         with tab2:
             mode = st.radio("I want to:", ["Create New Household", "Join Existing Household"], horizontal=True)
             
@@ -295,21 +335,25 @@ def login_screen():
                             st.error(f"Signup Error: {e}")
 
 def app_interface():
-    t1, t2, t3, t4 = st.tabs(["🏠 Home", "📸 Scan", "📦 Pantry", "🛒 List"])
+    # Added '🎤 Voice' to the tabs list
+    t1, t2, t3, t4, t5 = st.tabs(["🏠 Home", "📸 Scan", "🎤 Voice", "📦 Pantry", "🛒 List"])
     hh_id = st.session_state.user_info.get('household_id','DEMO')
     
     with t1: page_home(hh_id)
     with t2: page_scanner(hh_id)
-    with t3: page_pantry(hh_id)
-    with t4: page_list(hh_id)
+    with t3: page_voice(hh_id)
+    with t4: page_pantry(hh_id)
+    with t5: page_list(hh_id)
 
 def page_home(hh_id):
     st.markdown("## Good Morning!")
     st.write("What would you like to do today?")
-    c1,c2 = st.columns(2)
+    c1,c2,c3 = st.columns(3)
     with c1: 
         if st.button("📸 Scan New Items", use_container_width=True): st.info("Tap the 'Scan' tab above!")
     with c2:
+        if st.button("🎤 Voice Add", use_container_width=True): st.info("Tap the 'Voice' tab above!")
+    with c3:
         if st.button("📝 Add Manually", use_container_width=True): manual_add_dialog(hh_id)
 
 @st.dialog("Add Item")
@@ -343,6 +387,61 @@ def manual_add_dialog(hh_id):
             })
             st.rerun()
 
+# --- NEW VOICE FEATURE ---
+def page_voice(hh_id):
+    st.markdown("## 🎤 Voice Input")
+    st.info("Tap the mic and list your groceries naturally.")
+    
+    # Audio recorder component
+    # Returns a dictionary: {'bytes': b'...', 'sample_rate': 44100, ...}
+    audio = mic_recorder(
+        start_prompt="Start Recording",
+        stop_prompt="Stop Recording",
+        just_once=False,
+        use_container_width=True,
+        format="wav",
+        key="voice_recorder"
+    )
+    
+    if audio:
+        st.audio(audio['bytes'])
+        if st.button("⚡ Process Audio", type="primary", use_container_width=True):
+            with st.spinner("Listening & Sorting..."):
+                # Send raw bytes to Gemini
+                extracted = parse_voice_to_json(audio['bytes'])
+                if extracted:
+                    st.session_state.voice_data = extracted
+                    st.rerun()
+    
+    # Show Review Table if data exists
+    if st.session_state.voice_data:
+        st.divider()
+        st.markdown("### Review Detected Items")
+        df = st.data_editor(st.session_state.voice_data, num_rows="dynamic", use_container_width=True)
+        
+        if st.button("Confirm & Save to Pantry", use_container_width=True):
+            batch = db.batch()
+            for i in df:
+                ref = db.collection('inventory').document()
+                # Merge defaults
+                clean_item = {
+                    "item_name": i.get('item_name', 'Unknown'),
+                    "category": i.get('category', 'Pantry'),
+                    "quantity": float(i.get('quantity', 1.0)),
+                    "initial_quantity": float(i.get('quantity', 1.0)),
+                    "estimated_expiry": i.get('estimated_expiry', str(datetime.date.today() + datetime.timedelta(days=30))),
+                    "household_id": hh_id,
+                    "added_at": firestore.SERVER_TIMESTAMP,
+                    "threshold": 1.0
+                }
+                batch.set(ref, clean_item)
+            
+            batch.commit()
+            st.session_state.voice_data = None
+            st.success("Added to Pantry!")
+            time.sleep(1.5)
+            st.rerun()
+
 def page_scanner(hh_id):
     st.markdown("## 📸 Kitchen Mind")
     st.info("Capture 3 angles for best results.")
@@ -370,6 +469,8 @@ def page_scanner(hh_id):
         st.divider()
         if st.button("✨ Analyze Photos", type="primary", use_container_width=True):
             with st.spinner("Reading..."):
+                # Placeholder for Image Scan Logic (requires Gemini Vision code)
+                # In a real scenario, you would send valid[0] to Gemini Vision similar to the audio function
                 st.session_state.data = [{"item_name":"Scanned Product", "quantity":1.0, "category":"Pantry"}]
                 st.rerun()
 
