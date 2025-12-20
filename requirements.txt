@@ -3,3 +3,5 @@ google-genai
 firebase-admin
 google-generativeai
 Pillow
+streamlit-mic-recorder
+
